@@ -10,7 +10,8 @@
         "Map": true,
         "WeakSet": true,
         "WeakMap": true,
-        "Symbol": true
+        "Symbol": true,
+        "Promise": true
     },
 
     "extends": "eslint:recommended",
@@ -33,7 +34,7 @@
         "no-invalid-this": 2,
         "no-lone-blocks": 2,
         "no-loop-func": 2,
-        "no-magic-numbers": [2, {"enforceConst": true}],
+        "no-magic-numbers": [2, {"enforceConst": true, "ignore": [0]}],
         "no-multi-spaces": 2,
         "no-multi-str": 2,
         "no-native-reassign": 2,
@@ -153,7 +154,7 @@
         "wrap-regex": 2,
 
         "arrow-body-style": [2, "as-needed"],
-        "arrow-parens": [2, "always"],
+        //"arrow-parens": [2, "always"],
         "arrow-spacing": [2, { "before": false, "after": true }],
         "constructor-super": 2,
         "generator-star-spacing": [2, {"before": false, "after": true}],

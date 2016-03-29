@@ -1,7 +1,6 @@
-*.js
-*.js.map
 npm-debug.log
 config
+build
 
 # Dependency directory
 # Deployed apps should consider commenting this line out:

@@ -1,11 +1,14 @@
 import {all, TaskSet} from './async';
 import {logger} from './ctxlogger';
+import {getDecoratedMethods} from './ioc/decorators';
 import {
-    getDecoratedMethods,
-    create, createInjection,
-    resolveImplementationDescriptor, resolveInjectionContextDescriptor
-} from './ioc/decorators';
-import {getContext, Context, findContextMethod, handle} from './ioc/context';
+    resolveImpementation, resolveImplementationDescriptor,
+    resolveImplementationCtxDescriptor,
+    findContextMethod
+} from './ioc/resolve';
+import {create} from './ioc/create';
+import {getContext, Context} from './ioc/context';
+import {handle} from './ioc/resolve';
 import {config} from './config';
 
 
@@ -102,7 +105,7 @@ export class Container {
 
         for (let descr of getDecoratedMethods(ServiceClass)) {
             log.debug`creating entrypoint for ${descr.decorator}`;
-            let ep = createInjection(descr, this);
+            let ep = resolveImpementation(descr, this);
 
             entrypoints.push(ep);
         }
@@ -220,8 +223,8 @@ export class Container {
         this.log.debug`resolving dependency class for ${decoration.decorator}`;
     }
 
-    @handle(resolveInjectionContextDescriptor)
-    resolveInjectionContextDescriptor(decoration) {
+    @handle(resolveImplementationCtxDescriptor)
+    resolveImplementationCtxDescriptor(decoration) {
         this.log.debug`resolving ctx class for ${decoration.decorator}`;
 
         if (decoration.decoratedMethod) {

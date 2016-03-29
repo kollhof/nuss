@@ -1,0 +1,20 @@
+instrumentation:
+  root: ./nuss
+  es-modules: true
+  include-all-sources: true
+
+reporting:
+  dir: ./build/cov
+  reports:
+    - json
+    - html
+  report-config:
+      json: {file: coverage.json}
+
+check:
+    global:
+        statements: 100
+        lines: 100
+        branches: 100
+        functions: 100
+        excludes: []

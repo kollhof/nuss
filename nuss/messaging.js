@@ -1,6 +1,5 @@
-import {
-    methodDecorator, dependencyDecorator, callable
-} from './ioc/decorators';
+import {methodDecorator, dependencyDecorator} from './ioc/decorators';
+import {callable} from './ioc/create';
 import {spawnWorker, spawn, workerContext} from './container';
 import {logger} from './ctxlogger';
 

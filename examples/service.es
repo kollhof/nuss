@@ -1,9 +1,9 @@
-import {sleep} from 'nuss/lib/async';
-import {timer} from 'nuss/lib/timer';
-import {http} from 'nuss/lib/http';
-import {consumer, publisher} from 'nuss/lib/messaging';
-import {logger} from 'nuss/lib/ctxlogger';
-import {workerContext} from 'nuss/lib/container';
+import {sleep} from 'nuss/async';
+import {timer} from 'nuss/timer';
+import {http} from 'nuss/http';
+import {consumer, publisher} from 'nuss/messaging';
+import {logger} from 'nuss/ctxlogger';
+import {workerContext} from 'nuss/container';
 
 const START_COUNTER = 0;
 const TIMER_SLEEP_TIME = 1000;
