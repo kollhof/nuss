@@ -38,3 +38,5 @@ example:
 		--service examples/service:Foobar
 dev:
 	npm install
+
+ci: cover
