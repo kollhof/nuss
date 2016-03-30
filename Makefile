@@ -13,7 +13,7 @@ build:
 
 
 lint:
-	$(NODE_BIN)/eslint nuss
+	$(NODE_BIN)/eslint nuss examples tests
 
 
 test-compiled:

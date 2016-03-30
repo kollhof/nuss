@@ -1,18 +1,8 @@
 import {DefaultWeakMap} from '../default-maps';
 import {resolveImpementation} from './resolve';
 
-
 const DECORATED_METHODS = new DefaultWeakMap(()=> []);
-const DECORATOR_DESCRIPTORS = new WeakMap();
 
-
-export function getDecoratorDescriptor(decorator) {
-    return DECORATOR_DESCRIPTORS.get(decorator);
-}
-
-export function setDecoratorDescriptor(decorator, descriptor) {
-    return DECORATOR_DESCRIPTORS.set(decorator, descriptor);
-}
 
 export function* getDecoratedMethods(cls) {
     let decoratorMethodDescr = DECORATED_METHODS.get(cls.prototype);
@@ -31,7 +21,8 @@ export function methodDecorator(decorator, decoratorDescr) {
             decorator,
             decoratorDescr,
             decoratedClass,
-            decoratedMethod
+            decoratedMethod,
+            decoratedName: name
         };
 
         DECORATED_METHODS
@@ -64,7 +55,8 @@ export function dependencyDecorator(decorator, decoratorDescr) {
         let decoration = {
             decorator,
             decoratorDescr,
-            decoratedClass
+            decoratedClass,
+            decoratedName: name
         };
 
         descr.initializer = function() {

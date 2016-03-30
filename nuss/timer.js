@@ -16,6 +16,8 @@ export class Timer {
     }
 
     async start() {
+        this.log.debug`starting timer: ${this.duration}ms`;
+
         /* global setInterval:true*/
         this.interval = setInterval(
             ()=> this.spawnWorker(),

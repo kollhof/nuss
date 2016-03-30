@@ -12,34 +12,6 @@ import {logger} from './logging';
 import {config} from './config';
 
 
-function getProperty(obj, path) {
-    let val = obj;
-
-    for (let key of path.split('.')) {
-        val = val[key];
-        if (val === undefined) {
-            break;
-        }
-    }
-    return val;
-}
-
-function getPath(obj) {
-    let ctx = getContext(obj);
-    let names = [];
-
-    while (ctx !== undefined) {
-        let name = getProperty(ctx, 'decoration.decorator.name');
-
-        if (name !== undefined) {
-            names.unshift(name);
-        }
-
-        ctx = getContext(ctx);
-    }
-    return names;
-}
-
 export class Container {
     @logger
     log
@@ -147,22 +119,23 @@ export class Container {
         let log = this.log.timeit();
         let epCtx = getContext(ep);
 
-        log.debug`creating worker for ${epCtx.name}`;
+        log.debug`creating worker for ${epCtx}`;
         let workerCtx = create(WorkerContext, [], epCtx);
         let workerFunc = create(WorkerClass, workerArgs, workerCtx);
+        log.debug`worker created in ${log.elapsed} ms`;
 
-        log.debug`creating handler for ${workerCtx.name}`;
+        log.debug`creating handler for ${workerCtx}`;
         let handler = createBoundDecoratedMethod(epCtx.decoration, workerCtx);
         log.debug`handler created in ${log.elapsed} ms`;
 
-        log.debug`invoking worker ${workerCtx.name}`;
+        log.debug`invoking worker ${workerCtx}`;
         await workerFunc(handler);
-        log.debug`worker ${workerCtx.name} completed in ${log.elapsed} ms`;
+        log.debug`worker ${workerCtx} completed in ${log.elapsed} ms`;
     }
 
     @handle(spawnWorker)
     spawnWorker(ep, WorkerClass, ...workerArgs) {
-        this.log.debug`spawning worker for ${getContext(ep).name}`;
+        this.log.debug`spawning worker for ${getContext(ep)}`;
         return this.spawn(()=> this.runWorker(ep, WorkerClass, workerArgs));
     }
 
@@ -178,24 +151,6 @@ export class Container {
 
     @handle(config)
     getConfig(key, obj) {
-        this.log.debug`resolving config ${key}`;
-        let names = getPath(obj);
-        let conf = {default: this.config};
-
-        names.unshift('default');
-
-        for (let name of names) {
-            conf = conf[name];
-
-            if (conf === undefined) {
-                break;
-            } else {
-                let val = conf[key];
-
-                if (val !== undefined) {
-                    return val;
-                }
-            }
-        }
+        return this.config;
     }
 }
