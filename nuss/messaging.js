@@ -1,7 +1,7 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
-import {spawnWorker, spawn, workerContext} from './container';
-import {logger} from './ctxlogger';
+import {spawnWorker, spawn, workerContext} from './worker';
+import {logger} from './logging';
 
 import {asyncSQS} from './aws/sqs';
 
@@ -26,6 +26,19 @@ async function getQueueUrl(queue, sqs) {
     return data.QueueUrl;
 }
 
+function trasnferHeadersToCtx(msg, ctx) {
+    let attrs = msg.MessageAttributes;
+
+    for (let key of ['foobar', 'trace']) {
+        let val = attrs[key];
+
+        if (val !== undefined) {
+            ctx.setHeader(key, val.StringValue);
+        }
+    }
+}
+
+
 class Publisher {
     @asyncSQS
     sqs
@@ -38,28 +51,10 @@ class Publisher {
 
     constructor(queue) {
         this.queue = queue;
-        this.queueUrl = null;
     }
 
     async getQueueUrl() {
         return await getQueueUrl(this.queue, this.sqs);
-
-        // let queueUrl = this.queueUrl;
-
-        // if (queueUrl) {
-        //     return queueUrl;
-        // }
-
-        // queueUrl = await this.ensureQueueExists();
-        // this.queueUrl = queueUrl;
-
-        // return queueUrl;
-    }
-
-    async ensureQueueExists() {
-        let data = await this.sqs.createQueue({QueueName: this.queue});
-
-        return data.QueueUrl;
     }
 
     @callable
@@ -97,13 +92,49 @@ export function publisher(queue) {
     });
 }
 
+export class MessageWorker {
+    @logger
+    log
+
+    @asyncSQS
+    sqs
+
+    @workerContext
+    workerCtx
+
+    constructor(msg, queueUrl) {
+        this.msg = msg;
+        this.queueUrl = queueUrl;
+    }
+
+    @callable
+    async processMessage(handler) {
+        let {log, queueUrl, msg, workerCtx} = this;
+
+        trasnferHeadersToCtx(msg, workerCtx);
+
+        try {
+            await handler(msg.Body);
+        } catch (err) {
+            log.error`worker ${err.stack}`;
+            throw err;
+        }
+
+        log.debug`deleting msg ${msg.MessageId}`;
+
+        await this.sqs.deleteMessage({
+            QueueUrl: queueUrl,
+            ReceiptHandle: msg.ReceiptHandle
+        });
+    }
+}
 
 class Consumer {
     @asyncSQS
     sqs
 
-    @spawnWorker
-    spawnWorker
+    @spawnWorker(MessageWorker)
+    processMessage
 
     @spawn
     spawn
@@ -117,25 +148,8 @@ class Consumer {
         this.stopped = false;
     }
 
-    async getQueueUrl() {
-        return await getQueueUrl(this.queue, this.sqs);
-
-        // let queueUrl = this.queueUrl;
-
-        // if (queueUrl) {
-        //     return queueUrl;
-        // }
-
-        // queueUrl = await this.ensureQueueExists();
-        // this.queueUrl = queueUrl;
-
-        // return queueUrl;
-    }
-
     async ensureQueueExists() {
-        let data = await this.sqs.createQueue({QueueName: this.queue});
-
-        return data.QueueUrl;
+        this.queueUrl = await getQueueUrl(this.queue, this.sqs);
     }
 
     async start() {
@@ -150,11 +164,9 @@ class Consumer {
     }
 
     async fetchMessages() {
-        let {log} = this;
+        let {log, queueUrl} = this;
 
         log.debug`fetching messages from ${this.queue}`;
-
-        let queueUrl = await this.getQueueUrl();
 
         let data = await this.sqs.receiveMessage({
             QueueUrl: queueUrl,
@@ -168,39 +180,9 @@ class Consumer {
         return data.Messages || [];
     }
 
-    async processMessage(msg, handler, workerCtx) {
-        let {log} = this;
-
-        let attrs = msg.MessageAttributes;
-
-        for (let key of ['foobar', 'trace']) {
-            let val = attrs[key];
-
-            if (val !== undefined) {
-                workerCtx.setHeader(key, val.StringValue);
-            }
-        }
-
-        try {
-            await handler(msg.Body);
-        } catch (err) {
-            log.error`worker ${err.stack}`;
-            //TODO: application error ?!
-            return;
-        }
-
-        log.debug`deleting msg ${msg.MessageId}`;
-
-        let queueUrl = await this.getQueueUrl();
-
-        await this.sqs.deleteMessage({
-            QueueUrl: queueUrl,
-            ReceiptHandle: msg.ReceiptHandle
-        });
-    }
 
     async pollMessages() {
-        let {log, queue} = this;
+        let {log, queue, queueUrl} = this;
 
         log.debug`start polling`;
 
@@ -210,10 +192,7 @@ class Consumer {
             log.debug`processing messages ${messages.length} from ${queue}`;
 
             for (let msg of messages) {
-                this.spawnWorker(
-                    (handler, workerCtx)=>
-                        this.processMessage(msg, handler, workerCtx)
-                );
+                this.processMessage(msg, queueUrl);
             }
         }
 

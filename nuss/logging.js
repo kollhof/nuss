@@ -1,22 +1,14 @@
-/* global console:true*/
-/* eslint no-console:0*/
-import {inspect, format} from 'util';
+import {inspect} from 'util';
+import {hrtime} from './profiling';
+import {getContext} from './ioc/context';
 
-function merge(iter1, iter2) {
-    var items = [];
-    let i = iter2.length;
-
-    items.unshift(iter1[i]);
-
-    while (i--) {
-        items.unshift(iter2[i]);
-        items.unshift(iter1[i]);
-    }
-    return items;
-}
 
 const RESET = '\x1b[0m';
 const GRREEN = '\x1b[32;22m';
+
+const MILLI_SECONDS = 1000;
+const NANO_SECONDS = 1000000;
+
 
 export class BaseLogger {
 
@@ -31,16 +23,13 @@ export class BaseLogger {
     error(parts, ...args) {
         this.log('ERROR', parts, args);
     }
-
-    log(level, parts, args) {
-    }
 }
 
 export class TimingLogger extends BaseLogger {
     constructor(parent) {
         super();
         this.parent = parent;
-        this.startTime = process.hrtime();
+        this.startTime = hrtime();
     }
 
     log(level, parts, args) {
@@ -48,8 +37,9 @@ export class TimingLogger extends BaseLogger {
     }
 
     get elapsed() {
-        let [sec, nsec] = process.hrtime(this.startTime);
-        return (sec * 1000) + (nsec / 1000000);
+        let [sec, nsec] = hrtime(this.startTime);
+
+        return (sec * MILLI_SECONDS) + (nsec / NANO_SECONDS);
     }
 }
 
@@ -61,37 +51,40 @@ function formatItem(obj) {
 }
 
 export class Logger extends BaseLogger {
-    constructor(name) {
+    constructor(target) {
         super();
-        this.name = name;
+        this.target = target;
     }
 
     log(level, parts, args) {
-        args = args.map(formatItem);
+        let msg = String.raw(parts, ...(args.map(formatItem)));
 
-        parts = merge(parts, args);
-
+        /* global process:true */
         process.stdout.write(
-            `${level}:${GRREEN}${this.prefix}${RESET}: ${parts.join('')}\n`
+            `${level}:${GRREEN}${this.prefix}${RESET}: ${msg}\n`
         );
-    }
-
-    get prefix() {
-        return this.name;
     }
 
     timeit() {
         return new TimingLogger(this);
     }
+
+    get prefix() {
+        let ctx = getContext(this.target) || this.target;
+        let name = ctx ? ctx.name: undefined;
+
+        if (name === undefined) {
+            name = ctx.constructor.name;
+        }
+        return name;
+    }
 }
 
-
-export function logger(name) {
-    var log = new Logger(name);
-    return {
-        debug: log.debug.bind(log),
-        info: log.info.bind(log),
-        error: log.error.bind(log),
-        timeit: log.timeit.bind(log)
+export function logger(proto, name, descr) {
+    descr.initializer = function() {
+        return new Logger(this);
     };
+    return descr;
 }
+
+

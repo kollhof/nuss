@@ -2,8 +2,8 @@ import {sleep} from 'nuss/async';
 import {timer} from 'nuss/timer';
 import {http} from 'nuss/http';
 import {consumer, publisher} from 'nuss/messaging';
-import {logger} from 'nuss/ctxlogger';
-import {workerContext} from 'nuss/container';
+import {logger} from 'nuss/logging';
+import {workerContext} from 'nuss/worker';
 
 const START_COUNTER = 0;
 const TIMER_SLEEP_TIME = 1000;
@@ -33,7 +33,7 @@ export class Foobar {
 
         log.debug`-----${cntr}-----`;
         log.debug`message ${msg}`;
-        log.debug`headers ${this.workerCtx.headers}`;
+        log.debug`ctx headers ${this.workerCtx.headers}`;
         log.debug`------------------`;
     }
 
@@ -44,6 +44,7 @@ export class Foobar {
 
         log.debug`-----${cntr}-----`;
         this.shrub({ni: cntr});
+        log.debug`ctx headers ${this.workerCtx.headers}`;
         log.debug`-----------------`;
     }
 
@@ -54,6 +55,7 @@ export class Foobar {
 
         log.debug`-----${cntr}-----`;
         this.log.debug`http: ${req.headers}`;
+        log.debug`ctx headers ${this.workerCtx.headers}`;
         resp.end(`Hello World:\n`);
         log.debug`-----------------`;
     }
@@ -65,6 +67,7 @@ export class Foobar {
 
         log.debug`-----${cntr}-----`;
         this.log.debug`http: ${req.headers}`;
+        log.debug`ctx headers ${this.workerCtx.headers}`;
         this.shrub({ni: cntr});
         resp.end(`Hello World 2: ${cntr}`);
         log.debug`-----------------`;

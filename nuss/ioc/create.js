@@ -16,6 +16,7 @@ export function create(cls, args=[], ctx) {
     };
 
     setContext(Class.prototype, ctx);
+
     // TODO: overwrite or not?
     Class.prototype.constructor = cls;
     let obj = new Class();

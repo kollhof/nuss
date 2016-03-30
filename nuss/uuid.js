@@ -1,12 +1,19 @@
 import {randomBytes} from 'crypto';
-import {v4 as uuid4} from 'node-uuid';
+import uuid from 'node-uuid';
 
 
-export function uuid() {
+export const DEFAULT_SHORTID_WIDTH=8;
 
-    return randomBytes(8)
+
+export function shortid(width=DEFAULT_SHORTID_WIDTH) {
+
+    return randomBytes(width)
         .toString('base64')
         .replace('+', '$')
         .replace('/', '&')
-        .slice(0, -1);
+        .replace('=', '');
+}
+
+export function uuid4() {
+    return uuid.v4();
 }

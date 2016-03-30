@@ -2,45 +2,82 @@
 'use strict';
 
 import {ArgumentParser} from 'argparse';
-
+import {logger} from './logging';
 import {Container} from './container';
 import path from 'path';
 
 const EXIT_NO_ERROR = 0;
 const EXIT_ERROR = 1;
 
-async function stop(runner, proc, signal) {
-    try {
-        console.log('signal', signal);
-        await runner.stop();
-        proc.exit(EXIT_NO_ERROR);
-    } catch (err) {
-        try {
-            console.log(err);
-        } finally {
-            proc.exit(EXIT_ERROR);
-        }
+
+export class Nuss {
+    @logger
+    log
+
+    constructor(process) {
+        this.process = process;
     }
-}
 
-export async function runService(cls, config, proc=process) {
-    let runner = new Container(cls, config);
+    async main(args) {
+        this.registerProcessEvents();
 
+        if (args.require) {
+            /* global require: true */
+            require(args.require);
+        }
 
-    proc.on('unhandledRejection', (reason)=> {
-        console.log(`Unhandled async: ${reason.stack}`);
+        let [modFile, clsName] = args.service.split(':');
+        let mod = require(path.resolve(modFile));
+        let cls = mod[clsName];
+        let config = require(path.resolve(args.config)).default;
+
+        let runner = new Container(cls, config);
+        this.runner = runner;
+        await runner.start();
+    }
+
+    registerProcessEvents() {
+        let {log, process} = this;
+
+        log.debug`setting up process events`;
+
+        process.on('unhandledRejection',
+            (err)=> this.handleUnhandledRejection(err));
+        process.on('SIGTERM', ()=> this.stop('term'));
+        process.on('SIGINT', ()=> this.stop('int'));
+    }
+
+    handleUnhandledRejection(reason) {
+        let {log, process} = this;
+
+        log.error`unhandled async: ${reason.stack}`;
         if (reason.errors) {
             for (let err of reason.errors) {
-                console.log(err.stack);
+                log.error`${err.stack}`;
             }
         }
-        proc.exit(EXIT_ERROR);
-    });
 
-    proc.on('SIGTERM', ()=> stop(runner, proc, 'term'));
-    proc.on('SIGINT', ()=> stop(runner, proc, 'int'));
+        // TODO: should we call stop?
+        process.exit(EXIT_ERROR);
+    }
 
-    await runner.start();
+
+    async stop(signal) {
+        let {log, runner, process} = this;
+
+        try {
+            log.debug`cought signal ${signal}, stopping application`;
+            await runner.stop();
+            process.exit(EXIT_NO_ERROR);
+        } catch (err) {
+            try {
+                log`error stopping application: ${err}`;
+            } finally {
+                process.exit(EXIT_ERROR);
+            }
+        }
+    }
+
 }
 
 
@@ -71,18 +108,13 @@ export function main() {
 
     let args = parser.parseArgs();
 
-    if (args.require) {
-        require(args.require);
-    }
-
-    let [modFile, clsName] = args.service.split(':');
-    let mod = require(path.resolve(modFile));
-    let cls = mod[clsName];
-    let config = require(path.resolve(args.config)).default;
-
-    runService(cls, config);
+    /* global process: true */
+    let app = new Nuss(process);
+    app.main(args);
 }
 
-if (! module.parent) {
+/* global module: true */
+if (!module.parent) {
     main();
 }
+

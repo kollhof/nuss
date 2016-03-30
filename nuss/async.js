@@ -1,6 +1,4 @@
-
 export class SomeRejected extends Error {
-
     constructor(errors) {
         super('SomeRejected');
         this.errors = errors;
@@ -28,6 +26,7 @@ export class SomeRejected extends Error {
  */
 export async function sleep(duration) {
     await new Promise((resolve)=> {
+        /* global setTimeout: true */
         setTimeout(resolve, duration);
     });
 }

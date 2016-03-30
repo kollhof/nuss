@@ -1,6 +1,6 @@
 import {methodDecorator} from './ioc/decorators';
-import {spawnWorker} from './container';
-import {logger} from './ctxlogger';
+import {spawnWorker} from './worker';
+import {logger} from './logging';
 
 
 export class Timer {
@@ -18,7 +18,7 @@ export class Timer {
     async start() {
         /* global setInterval:true*/
         this.interval = setInterval(
-            ()=> this.spawnWorker(this.handleTick.bind(this)),
+            ()=> this.spawnWorker(),
             this.duration
         );
     }
@@ -28,10 +28,6 @@ export class Timer {
 
         /* global clearInterval:true*/
         clearInterval(this.interval);
-    }
-
-    async handleTick(handler) {
-        await handler(this.duration);
     }
 }
 

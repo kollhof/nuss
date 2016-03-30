@@ -45,6 +45,19 @@ export function methodDecorator(decorator, decoratorDescr) {
 
 const SHARED = new DefaultWeakMap(()=> new Map());
 
+function getShared(decorator, sharingKey) {
+    if (sharingKey !== undefined) {
+        return SHARED.get(decorator).get(sharingKey);
+    }
+}
+
+function setShared(decorator, sharingKey, obj) {
+    if (sharingKey !== undefined) {
+        SHARED.get(decorator).set(sharingKey, obj);
+    }
+}
+
+
 export function dependencyDecorator(decorator, decoratorDescr) {
     return (proto, name, descr)=> {
         let decoratedClass = proto.constructor;
@@ -56,21 +69,17 @@ export function dependencyDecorator(decorator, decoratorDescr) {
 
         descr.initializer = function() {
             let sharingKey = decoratorDescr.sharingKey;
-            let obj, key, store;
 
-            if (sharingKey !== undefined) {
-                key = sharingKey();
-                store = SHARED.get(decorator);
-                obj = store.get(key);
-            }
+            sharingKey = sharingKey ? sharingKey() : undefined;
+
+            let obj = getShared(decorator, sharingKey);
 
             if (obj === undefined) {
                 obj = resolveImpementation(decoration, this);
-
-                if (sharingKey !== undefined) {
-                    store.set(key, obj);
-                }
             }
+
+            setShared(decorator, sharingKey, obj);
+
             return obj;
         };
         return descr;

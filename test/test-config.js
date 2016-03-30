@@ -12,9 +12,8 @@ describe('config() decorator', ()=> {
     }
 
     it('should inject configuration', ()=> {
-        //let foobar = new Foobar();
+        // let foobar = new Foobar();
 
-        //expect(foobar.spam).to.be.equal(null);
+        // expect(foobar.spam).to.be.equal(null);
     });
 });
-

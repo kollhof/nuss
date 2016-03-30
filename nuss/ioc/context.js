@@ -1,4 +1,4 @@
-import {uuid} from '../uuid';
+import {shortid} from '../uuid';
 
 const CONTEXT = Symbol('context');
 
@@ -20,15 +20,9 @@ export function* getContexts(obj) {
     }
 }
 
-export function context(proto, name, descr) {
-    descr.initializer = function() {
-        return getContext(this);
-    };
-    return descr;
-}
 
 export class Context {
-    id = uuid();
+    id = shortid();
 }
 
 export class InjectionContext extends Context {
@@ -42,3 +36,18 @@ export class InjectionContext extends Context {
     }
 }
 
+export class InvokerContext extends Context {
+    constructor(decoration) {
+        super();
+        this.decoration = decoration;
+    }
+
+    get name() {
+        let {decoratedClass, decoratedMethod, decorator} = this.decoration;
+        let clsName = decoratedClass.name;
+        let handlerName = decoratedMethod.name;
+        let decoratorName = decorator.name;
+
+        return `${clsName}.${handlerName}@${decoratorName}`;
+    }
+}

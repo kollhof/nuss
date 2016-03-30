@@ -1,6 +1,7 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
-import {spawnWorker} from './container';
-import {logger} from './ctxlogger';
+import {callable} from './ioc/create';
+import {spawnWorker, workerContext} from './worker';
+import {logger} from './logging';
 import {config} from './config';
 
 import express, {Router} from 'express';
@@ -88,30 +89,23 @@ function httpServer(...args) {
 
 const INTERNAL_SERVER_ERROR = 500;
 
-class HttpRoute {
-    @httpServer
-    server
-
+class RequestWorker {
     @logger
     log
 
-    @spawnWorker
-    spawnWorker
+    @workerContext
+    workerCtx;
 
-    constructor(route) {
-        this.server
-            .addRoute(GET, route, (...args)=> this.handleRequest(...args));
+    constructor(req, resp) {
+        this.req = req;
+        this.resp = resp;
     }
 
-    handleRequest(req, resp) {
-        this.spawnWorker((handler, workerCtx)=> {
-            this.handleRequestWorker(handler, workerCtx, req, resp);
-        });
-    }
+    @callable
+    async work(handler) {
+        let {log, workerCtx, req, resp} = this;
 
-    async handleRequestWorker(handler, workerCtx, req, resp) {
-        let {log} = this;
-
+        log.debug`applying request headers to worker context`;
         workerCtx.setHeader('foobar', req.headers.foobar);
         workerCtx.setHeader('trace', req.headers.trace);
 
@@ -123,7 +117,27 @@ class HttpRoute {
                 .send(err.stack);
         }
 
-        this.log.debug`http end`;
+        log.debug`http request handled`;
+    }
+}
+
+class HttpRoute {
+    @httpServer
+    server
+
+    @logger
+    log
+
+    @spawnWorker(RequestWorker)
+    spawnWorker
+
+    constructor(route) {
+        this.server
+            .addRoute(GET, route, (...args)=> this.handleRequest(...args));
+    }
+
+    handleRequest(req, resp) {
+        this.spawnWorker(req, resp);
     }
 
     async start() {
