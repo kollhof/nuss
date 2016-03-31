@@ -39,4 +39,4 @@ example:
 dev:
 	npm install
 
-ci: lint cover
+ci: cover-check

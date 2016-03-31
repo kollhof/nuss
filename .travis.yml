@@ -1,7 +1,10 @@
-language: node_js
-node_js:
-  - "5.1"
-script: make ci
+sudo: required
 
-notifications:
-  email: false
+services:
+  - docker
+
+install:
+  - docker build -t nuss .
+
+script:
+  - docker run -it nuss

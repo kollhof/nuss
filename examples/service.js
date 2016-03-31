@@ -19,94 +19,6 @@ function inc() {
     return _cntr;
 }
 
-function* getContexts(obj) {
-    let ctx = getContext(obj);
-    while (ctx !== undefined) {
-        yield ctx;
-        ctx = getContext(ctx);
-    }
-}
-
-function list(g) {
-    return Array.from(g);
-}
-
-function ctorName(ctx){
-    return ctx.constructor.name;
-}
-
-
-function mapCtx(ctx) {
-    let {decoration} = ctx;
-
-    if (decoration !== undefined) {
-        let {decorator, decoratedClass, decoratedName} = decoration;
-
-        return {
-            ctx: ctx.constructor.name,
-            cls: decoratedClass.name,
-            nme: decoratedName,
-            dec: decorator.name
-        };
-    }
-
-    return {
-        ctx: ctx.constructor.name,
-        id: ctx.id
-    };
-}
-
-
-class Ham {
-    @logger
-    log
-
-    shrub() {
-        let {log} = this;
-        let ctxs = list(getContexts(this));
-
-        let {wrk, names} = ctxs
-            .map(mapCtx)
-            .reduce((rslt, {cls, nme, dec, id})=> {
-                if (id !== undefined) {
-                    rslt.wrk = id;
-                } else if (cls !== undefined) {
-                    rslt.names.unshift(`${cls}.${nme}@${dec}`);
-                }
-
-                return rslt;
-            }, {names: []});
-
-        log.debug`\n\n<${wrk}>${names.join('-')}\n`;
-    }
-}
-export function ham() {
-    return dependencyDecorator(ham, {
-        dependencyClass: Ham,
-        constructorArgs: []
-    });
-}
-
-
-class Spam {
-    @logger
-    log
-
-    @ham()
-    eggs
-
-    shrub() {
-        this.eggs.shrub();
-    }
-}
-
-export function spam() {
-    return dependencyDecorator(spam, {
-        dependencyClass: Spam,
-        constructorArgs: []
-    });
-}
-
 
 export class Foobar {
     @logger
@@ -117,8 +29,6 @@ export class Foobar {
 
     @workerContext
     workerCtx
-    @spam()
-    ni
 
 
     @consumer('foobar')
@@ -130,20 +40,12 @@ export class Foobar {
         log.debug`message ${msg}`;
         log.debug`ctx headers ${this.workerCtx.headers}`;
         log.debug`------------------`;
-        throw ''
     }
 
     @timer(TIMER_SLEEP_TIME)
     async handle1() {
         let {log} = this;
         let cntr = inc();
-
-        this.ni.shrub();
-
-        let ctxs = list(getContexts(this));
-        let names = ctxs.map(mapCtx).map(inspect);
-
-        log.debug`\n\n${names.join('\n')}\n`;
 
         log.debug`-----${cntr}-----`;
         this.shrub({ni: cntr});
