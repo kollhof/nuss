@@ -8,3 +8,6 @@ install:
 
 script:
   - docker run -it nuss
+
+notifications:
+  email: false
