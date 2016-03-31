@@ -9,9 +9,9 @@ export function shortid(width=DEFAULT_SHORTID_WIDTH) {
 
     return randomBytes(width)
         .toString('base64')
-        .replace('+', '$')
-        .replace('/', '&')
-        .replace('=', '');
+        .replace(/\+/g, '$')
+        .replace(/\//g, '&')
+        .replace(/=/g, '');
 }
 
 export function uuid4() {

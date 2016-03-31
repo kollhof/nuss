@@ -10,7 +10,7 @@ import express, {Router} from 'express';
 const GET='get';
 
 
-class HttpServer {
+export class HttpServer {
     @logger
     log
 
@@ -79,7 +79,7 @@ class HttpServer {
 
 const SHARED_BY_PROCESS = Symbol('shared-by-process');
 
-function httpServer(...args) {
+export function httpServer(...args) {
     return dependencyDecorator(httpServer, {
         dependencyClass: HttpServer,
         constructorArgs: [],
@@ -89,7 +89,7 @@ function httpServer(...args) {
 
 const INTERNAL_SERVER_ERROR = 500;
 
-class RequestWorker {
+export class RequestWorker {
     @logger
     log
 
@@ -121,7 +121,7 @@ class RequestWorker {
     }
 }
 
-class HttpRoute {
+export class HttpRoute {
     @httpServer
     server
 

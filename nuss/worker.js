@@ -61,9 +61,14 @@ export function spawn(proto, name, descr) {
 
 function spawnWorkerDecorator(decorator, wokerClass) {
     return (proto, name, descr)=> {
+        descr.writable = true;
+
         descr.initializer = function() {
-            let spawnWrk = findDecoratedMethod(decorator, this)
-                .bind(null, this, wokerClass);
+            let spawnWrk = findDecoratedMethod(decorator, this);
+
+            if (spawnWrk !== undefined) {
+                spawnWrk = spawnWrk.bind(null, this, wokerClass);
+            }
             return spawnWrk;
         };
         return descr;

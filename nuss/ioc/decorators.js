@@ -59,6 +59,7 @@ export function dependencyDecorator(decorator, decoratorDescr) {
             decoratedName: name
         };
 
+        descr.writable = true;
         descr.initializer = function() {
             let sharingKey = decoratorDescr.sharingKey;
 

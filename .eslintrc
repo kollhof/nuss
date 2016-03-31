@@ -40,7 +40,7 @@
         "no-native-reassign": 2,
         "no-new": 2,
         "no-new-wrappers": 2,
-        "no-param-reassign": 2,
+        //"no-param-reassign": 2,
         "no-redeclare": 2,
         "no-return-assign": [2, "always"],
         "no-self-assign": 2,

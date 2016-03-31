@@ -137,6 +137,7 @@ export class Logger extends BaseLogger {
 }
 
 export function logger(proto, name, descr) {
+    descr.writable = true;
     descr.initializer = function() {
         return new Logger(this);
     };
