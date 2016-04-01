@@ -10,7 +10,6 @@ const SLEEP_TIME = 1;
 describe('Timer()', ()=> {
     it('should start and call spawnWorker() and stop', async ()=> {
         let tmr = new Timer(0);
-
         tmr.spawnWorker = spy();
         tmr.log = {debug: spy()};
 

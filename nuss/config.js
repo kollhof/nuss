@@ -1,4 +1,4 @@
-import {findDecoratedMethod} from './ioc/resolve';
+import {findProvider} from './ioc/resolve';
 import {getContextDescr, getContexts} from './ioc/context';
 
 
@@ -38,7 +38,7 @@ export function getConfig(key, configData, target) {
 export function config(key) {
     return (proto, name, descr)=> {
         descr.initializer = function() {
-            let getConfigData = findDecoratedMethod(config, this);
+            let getConfigData = findProvider(config, this);
             let data = {};
 
             if (getConfigData !== undefined) {

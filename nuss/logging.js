@@ -1,6 +1,7 @@
 import {inspect} from 'util';
 import {hrtime} from './profiling';
 import {getContextDescr, getContexts, Context} from './ioc/context';
+import {getImplementation} from './ioc/resolve';
 
 
 const RESET = '\x1b[0m';
@@ -50,6 +51,10 @@ export class BaseLogger {
 
     error(parts, ...args) {
         this.log('ERROR', parts, args);
+    }
+
+    log() {
+        // nop
     }
 }
 
@@ -137,9 +142,22 @@ export class Logger extends BaseLogger {
 }
 
 export function logger(proto, name, descr) {
+    proto[name] = new BaseLogger();
+
     descr.writable = true;
     descr.initializer = function() {
-        return new Logger(this);
+        let decoration = {
+            decorator: logger,
+            decoratorDescr: {
+                dependencyClass: Logger,
+                constructorArgs: [this]
+            },
+            decoratedClass: proto.constructor,
+            decoratedName: name
+        };
+
+        // TODO: this[name] = new BaseLogger();
+        return getImplementation(decoration, this);
     };
     return descr;
 }

@@ -1,16 +1,19 @@
-import {describe, it, expect, spy} from './testing';
+import {describe, it, expect} from './testing';
+import {createMocked} from 'nuss/testing';
 import {HttpRoute, http} from 'nuss/http';
 import {sleep} from 'nuss/async';
 import {getDecoratedMethods} from 'nuss/ioc/decorators';
 
 
+
 describe('HttpRoute()', ()=> {
     it('should ', async ()=> {
-        let httpRoute = new HttpRoute('/foobar/spam');
 
-        httpRoute.spawnWorker = spy();
-        httpRoute.server = {start: spy(), stop: spy()};
-        httpRoute.log = {debug: spy()};
+        let httpRoute = createMocked(HttpRoute, '/foobar/spam');
+
+        expect(httpRoute.server.addRoute)
+            .to.have.been.calledWithMatch('get', '/foobar/spam', ()=> true)
+            .once;
 
         await httpRoute.start();
 

@@ -1,8 +1,7 @@
 import {getDecoratedMethods} from './ioc/decorators';
 import {
-    resolveImpementation, resolveImplementationDescriptor,
-    resolveImplementationCtxDescriptor,
-    createBoundDecoratedMethod, handle
+    getImplementation, getImplementationCtxDescriptor,
+    createdDecoratedHandler, provide
 } from './ioc/resolve';
 import {create} from './ioc/create';
 import {getContext} from './ioc/context';
@@ -10,6 +9,7 @@ import {WorkerContext, spawn, spawnWorker} from './worker';
 import {all, TaskSet} from './async';
 import {logger} from './logging';
 import {config} from './config';
+
 
 
 export class Container {
@@ -31,7 +31,7 @@ export class Container {
 
         for (let descr of getDecoratedMethods(ServiceClass)) {
             log.debug`creating entrypoint for ${descr.decorator}`;
-            let ep = resolveImpementation(descr, this);
+            let ep = getImplementation(descr, this);
 
             entrypoints.push(ep);
         }
@@ -110,22 +110,26 @@ export class Container {
         log.debug`all tasks stopped in ${log.elapsed} ms`;
     }
 
-    @handle(spawn)
     spawn(taskFunction) {
         return this.activeTasks.spawn(taskFunction);
     }
 
-    async runWorker(ep, WorkerClass, workerArgs) {
-        let log = this.log.timeit();
-        let epCtx = getContext(ep);
+    @provide(spawn)
+    getSpawn() {
+        return this.spawn.bind(this);
+    }
 
-        log.debug`creating worker for ${epCtx}`;
-        let workerCtx = create(WorkerContext, [], epCtx);
+    async runWorker(source, WorkerClass, workerArgs) {
+        let log = this.log.timeit();
+        let sourceCtx = getContext(source);
+
+        log.debug`creating worker for ${sourceCtx}`;
+        let workerCtx = create(WorkerContext, [], sourceCtx);
         let workerFunc = create(WorkerClass, workerArgs, workerCtx);
         log.debug`worker created in ${log.elapsed} ms`;
 
         log.debug`creating handler for ${workerCtx}`;
-        let handler = createBoundDecoratedMethod(epCtx.decoration, workerCtx);
+        let handler = createdDecoratedHandler(sourceCtx.decoration, workerCtx);
         log.debug`handler created in ${log.elapsed} ms`;
 
         log.debug`invoking worker ${workerCtx}`;
@@ -133,24 +137,22 @@ export class Container {
         log.debug`worker ${workerCtx} completed in ${log.elapsed} ms`;
     }
 
-    @handle(spawnWorker)
-    spawnWorker(ep, WorkerClass, ...workerArgs) {
-        this.log.debug`spawning worker for ${getContext(ep)}`;
-        return this.spawn(()=> this.runWorker(ep, WorkerClass, workerArgs));
+    @provide(spawnWorker)
+    spawnWorker(decoration, source) {
+        let workerClass = decoration.decoratorDescr.dependencyClass;
+        return (...args)=> {
+            this.log.debug`spawning worker for ${getContext(source)}`;
+            this.spawn(()=> this.runWorker(source, workerClass, args));
+        };
     }
 
-    @handle(resolveImplementationDescriptor)
-    resolveImplementationDescriptor(decoration) {
-        this.log.debug`resolving dependency class for ${decoration.decorator}`;
-    }
-
-    @handle(resolveImplementationCtxDescriptor)
-    resolveImplementationCtxDescriptor(decoration) {
+    @provide(getImplementationCtxDescriptor)
+    getImplementationCtxDescriptor(decoration) {
         this.log.debug`resolving ctx class for ${decoration.decorator}`;
     }
 
-    @handle(config)
-    getConfig(key, obj) {
+    @provide(config)
+    getConfig() {
         return this.config;
     }
 }

@@ -1,5 +1,5 @@
 import {DefaultWeakMap} from '../default-maps';
-import {resolveImpementation} from './resolve';
+import {getImplementation} from './resolve';
 
 const DECORATED_METHODS = new DefaultWeakMap(()=> []);
 
@@ -68,7 +68,7 @@ export function dependencyDecorator(decorator, decoratorDescr) {
             let obj = getShared(decorator, sharingKey);
 
             if (obj === undefined) {
-                obj = resolveImpementation(decoration, this);
+                obj = getImplementation(decoration, this);
             }
 
             setShared(decorator, sharingKey, obj);
