@@ -4,6 +4,9 @@ import {http} from 'nuss/http';
 import {consumer, publisher} from 'nuss/messaging';
 import {logger} from 'nuss/logging';
 import {workerContext} from 'nuss/worker';
+import {getContext} from 'nuss/ioc/context';
+import {dependencyDecorator} from 'nuss/ioc/decorators';
+import {inspect} from 'util';
 
 const START_COUNTER = 0;
 const TIMER_SLEEP_TIME = 1000;
@@ -16,6 +19,7 @@ function inc() {
     return _cntr;
 }
 
+
 export class Foobar {
     @logger
     log
@@ -25,6 +29,7 @@ export class Foobar {
 
     @workerContext
     workerCtx
+
 
     @consumer('foobar')
     async ni(msg) {

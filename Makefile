@@ -13,7 +13,7 @@ build:
 
 
 lint:
-	$(NODE_BIN)/eslint nuss
+	$(NODE_BIN)/eslint nuss examples tests
 
 
 test-compiled:
@@ -39,4 +39,4 @@ example:
 dev:
 	npm install
 
-ci: lint cover
+ci: cover-check

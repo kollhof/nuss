@@ -1,9 +1,13 @@
 import {findDecoratedMethod, handle} from './ioc/resolve';
 import {callable} from './ioc/create';
-import {getContext, Context} from './ioc/context';
+import {Context} from './ioc/context';
+import {shortid} from './uuid';
+
 
 export class WorkerContext extends Context {
-    headers = {};
+    id = shortid()
+
+    headers = {}
 
     constructor() {
         super();
@@ -18,12 +22,6 @@ export class WorkerContext extends Context {
 
     getHeader(key) {
         return this.headers[key];
-    }
-
-    get name() {
-        let parent = getContext(this);
-
-        return `${parent.name}<${this.id}>`;
     }
 
     @handle(workerContext)

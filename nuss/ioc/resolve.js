@@ -82,7 +82,7 @@ export function resolveImpementation(decoration, target) {
     }
 
     let ctxDescr = resolveImplementationCtxDescriptor(decoration, target);
-    let ctx = createFromDescr(ctxDescr, target);
+    let ctx = createFromDescr(ctxDescr, getContext(target) || target);
     let descr = resolveImplementationDescriptor(decoration, ctx);
 
     return createFromDescr(descr, ctx);
