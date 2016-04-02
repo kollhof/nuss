@@ -4,25 +4,26 @@ import {getContextDescr, getContexts, Context} from './ioc/context';
 import {getImplementation} from './ioc/resolve';
 
 
-const RESET = '\x1b[0m';
+export const RESET = '\x1b[0m';
 
-const Black = 0;
-const Red = 1;
-const Green = 2;
-const Yellow = 3;
-const Blue = 4;
-const Magenta = 5;
-const Cyan = 6;
-const White = 7;
+export const Black = 0;
+export const Red = 1;
+export const Green = 2;
+export const Yellow = 3;
+export const Blue = 4;
+export const Magenta = 5;
+export const Cyan = 6;
+export const White = 7;
 
-const Bold = 1;
-const Faint = 2;
-const Normal = 22;
+export const Bold = 1;
+export const Faint = 2;
+export const Normal = 22;
 
-const Intense = 60;
+export const Intense = 60;
+export const Standard = 30;
 
 function fg(col, mod=Normal) {
-    return `\x1b[${30+col};${mod}m`;
+    return `\x1b[${Standard+col};${mod}m`;
 }
 
 const COLOR_MAP = {
@@ -76,7 +77,7 @@ export class TimingLogger extends BaseLogger {
     }
 }
 
-function nameSingleCtx(ctx, cls, nme, dec, id) {
+function nameSingleCtx(ctx, cls, nme, dec, id) { /* eslint max-params: 0 */
     let clr = COLOR_MAP[ctx] || COLOR_MAP.name;
     if (id !== undefined) {
         return `${clr}<${id}>${RESET}`;
