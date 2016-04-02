@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "Experiment building micro-services using various ES7 features",
   "repository": "https://github.com/kollhof/nuss",
+  "private": true,
+  "engines": {
+    "node": ">=5.9.0"
+  },
   "dependencies": {
     "argparse": "^1.0.7",
     "aws-sdk": "^2.2.38",
@@ -11,7 +15,9 @@
   },
   "devDependencies": {
     "babel-cli": "^6.5.1",
+    "babel-core": "^6.7.4",
     "babel-eslint": "^6.0.0-beta.6",
+    "babel-istanbul": "^0.7.0",
     "babel-plugin-check-es2015-constants": "^6.5.0",
     "babel-plugin-transform-async-to-generator": "^6.5.0",
     "babel-plugin-transform-class-properties": "^6.5.2",
@@ -25,19 +31,12 @@
     "babel-plugin-transform-exponentiation-operator": "^6.5.0",
     "babel-plugin-transform-object-rest-spread": "^6.5.0",
     "babel-register": "^6.5.2",
-    "eslint": "^2.4.0"
+    "chai": "^3.5.0",
+    "eslint": "^2.4.0",
+    "mocha": "^2.4.5"
   },
+  "main": "index.js",
   "bin": {
-    "nuss": "./lib/cli.js"
-  },
-  "scripts": {
-    "lint": "eslint lib/**/*.es",
-    "prepublish": "babel lib -x .es --out-dir lib --source-maps",
-    "test": "node -r babel-register ./lib/cli --config ./foo-config --service ./examples/service:Foobar"
-  },
-  "main": "lib",
-  "files": [
-    "package.json",
-    "lib/**/*.js"
-  ]
+    "nuss": "./cli.js"
+  }
 }

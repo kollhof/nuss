@@ -1,87 +1,44 @@
-import {all, TaskSet} from './async';
-import {logger} from './ctxlogger';
+import {getDecoratedMethods} from './ioc/decorators';
 import {
-    getDecoratedMethods,
-    create, createInjection,
-    resolveImplementationDescriptor, resolveInjectionContextDescriptor
-} from './ioc/decorators';
-import {getContext, Context, findContextMethod, handle} from './ioc/context';
+    resolveImpementation, resolveImplementationDescriptor,
+    resolveImplementationCtxDescriptor,
+    createBoundDecoratedMethod, handle
+} from './ioc/resolve';
+import {create} from './ioc/create';
+import {getContext} from './ioc/context';
+import {WorkerContext, spawn, spawnWorker} from './worker';
+import {all, TaskSet} from './async';
+import {logger} from './logging';
 import {config} from './config';
 
 
-export function spawnWorker(proto, name, descr) {
-    descr.initializer = function() {
-        let spawnWrkr = findContextMethod(spawnWorker, this);
+function getProperty(obj, path) {
+    let val = obj;
 
-        return (...args)=> spawnWrkr(this, ...args);
-    };
-    return descr;
-}
-
-export function spawn(proto, name, descr) {
-    descr.initializer = function() {
-        let spawnTask = findContextMethod(spawn, this);
-
-        return spawnTask;
-    };
-    return descr;
-}
-
-export function workerContext(proto, name, descr) {
-    descr.initializer = function() {
-        let getWorkerCtx = findContextMethod(workerContext, this);
-
-        return getWorkerCtx ? getWorkerCtx() : undefined;
-    };
-    return descr;
-}
-
-export class WorkerContext extends Context {
-    headers = {};
-
-    constructor() {
-        super();
-        this.setHeader('trace', this.id);
-    }
-
-    setHeader(key, value) {
-        if (value !== undefined) {
-            this.headers[key] = value;
+    for (let key of path.split('.')) {
+        val = val[key];
+        if (val === undefined) {
+            break;
         }
     }
-
-    getHeader(key) {
-        return this.headers[key];
-    }
-
-    get name() {
-        let parent = getContext(this);
-
-        return `${parent.name}<${this.id}>`;
-    }
-
-    @handle(workerContext)
-    getContext() {
-        return this;
-    }
+    return val;
 }
 
-export class InvokerContext extends Context {
-    constructor(decoration) {
-        super();
-        this.decoration = decoration;
-    }
+function getPath(obj) {
+    let ctx = getContext(obj);
+    let names = [];
 
-    get name() {
-        let {decoratedClass, decoratedMethod, decorator} = this.decoration;
-        let clsName = decoratedClass.name;
-        let handlerName = decoratedMethod.name;
-        let decoratorName = decorator.name;
+    while (ctx !== undefined) {
+        let name = getProperty(ctx, 'decoration.decorator.name');
 
-        return `${clsName}.${handlerName}@${decoratorName}`;
+        if (name !== undefined) {
+            names.unshift(name);
+        }
+
+        ctx = getContext(ctx);
     }
+    return names;
 }
-
 
 export class Container {
     @logger
@@ -102,7 +59,7 @@ export class Container {
 
         for (let descr of getDecoratedMethods(ServiceClass)) {
             log.debug`creating entrypoint for ${descr.decorator}`;
-            let ep = createInjection(descr, this);
+            let ep = resolveImpementation(descr, this);
 
             entrypoints.push(ep);
         }
@@ -128,9 +85,7 @@ export class Container {
         log.debug`starting entrypoints`;
 
         for (let ep of entrypoints) {
-            let task = ep.start();
-
-            starting.push(task);
+            starting.push(ep.start());
         }
 
         log.debug`waiting for all entrypoints to have started`;
@@ -145,19 +100,17 @@ export class Container {
         log.debug`stopping container`;
         await this.stopEntrypoints();
         await this.stopActiveTasks();
-
         log.debug`container stopped in ${log.elapsed} ms`;
     }
 
     async stopEntrypoints() {
         let {log, entrypoints} = this;
+        let stopping = [];
 
         log = log.timeit();
 
         log.debug`stopping entrypoints`;
-        const stopping = [];
-
-        for (const ep of entrypoints) {
+        for (let ep of entrypoints) {
             stopping.push(ep.stop());
         }
 
@@ -190,29 +143,27 @@ export class Container {
         return this.activeTasks.spawn(taskFunction);
     }
 
-    async runWorker(ep, workerFunc) {
+    async runWorker(ep, WorkerClass, workerArgs) {
         let log = this.log.timeit();
         let epCtx = getContext(ep);
 
-        log.debug`creating worker ctx for ${epCtx.name}`;
+        log.debug`creating worker for ${epCtx.name}`;
         let workerCtx = create(WorkerContext, [], epCtx);
-        let {decoratedClass, decoratedMethod} = epCtx.decoration;
+        let workerFunc = create(WorkerClass, workerArgs, workerCtx);
 
-        log.debug`creating worker for ${workerCtx.name}`;
-        let worker = create(decoratedClass, [], workerCtx);
-        let handler = decoratedMethod.bind(worker);
-        log.debug`worker creatd in ${log.elapsed} ms`;
+        log.debug`creating handler for ${workerCtx.name}`;
+        let handler = createBoundDecoratedMethod(epCtx.decoration, workerCtx);
+        log.debug`handler created in ${log.elapsed} ms`;
 
         log.debug`invoking worker ${workerCtx.name}`;
-        await workerFunc(handler, workerCtx);
-
+        await workerFunc(handler);
         log.debug`worker ${workerCtx.name} completed in ${log.elapsed} ms`;
     }
 
     @handle(spawnWorker)
-    spawnWorker(ep, workerFunc) {
-        this.log.debug`spawning worker for ${getContext(ep)}`;
-        return this.spawn(()=> this.runWorker(ep, workerFunc));
+    spawnWorker(ep, WorkerClass, ...workerArgs) {
+        this.log.debug`spawning worker for ${getContext(ep).name}`;
+        return this.spawn(()=> this.runWorker(ep, WorkerClass, workerArgs));
     }
 
     @handle(resolveImplementationDescriptor)
@@ -220,40 +171,20 @@ export class Container {
         this.log.debug`resolving dependency class for ${decoration.decorator}`;
     }
 
-    @handle(resolveInjectionContextDescriptor)
-    resolveInjectionContextDescriptor(decoration) {
+    @handle(resolveImplementationCtxDescriptor)
+    resolveImplementationCtxDescriptor(decoration) {
         this.log.debug`resolving ctx class for ${decoration.decorator}`;
-
-        if (decoration.decoratedMethod) {
-            return {
-                dependencyClass: InvokerContext,
-                constructorArgs: [decoration]
-            };
-        }
     }
 
     @handle(config)
     getConfig(key, obj) {
         this.log.debug`resolving config ${key}`;
-        let ctx = getContext(obj);
-        let ctxs = [];
-
-        while (ctx) {
-            let {decoration} = ctx || {};
-            let {decorator} = decoration || {};
-            let {name} = decorator || {};
-
-            if (name !== undefined) {
-                ctxs.unshift(name);
-            }
-
-            ctx = getContext(ctx);
-        }
-
+        let names = getPath(obj);
         let conf = {default: this.config};
-        ctxs.unshift('default');
 
-        for (let name of ctxs) {
+        names.unshift('default');
+
+        for (let name of names) {
             conf = conf[name];
 
             if (conf === undefined) {

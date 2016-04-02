@@ -18,6 +18,8 @@
         "transform-exponentiation-operator",
         "transform-object-rest-spread"
     ],
-    "sourceMaps": "none",
-    "only": "*.es"
+    "sourceMaps": "both",
+    "ignore": [
+        "build/**/*.js"
+    ]
 }

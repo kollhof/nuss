@@ -1,6 +1,4 @@
-
 export class SomeRejected extends Error {
-
     constructor(errors) {
         super('SomeRejected');
         this.errors = errors;
@@ -27,7 +25,8 @@ export class SomeRejected extends Error {
  * ```
  */
 export async function sleep(duration) {
-    await  new Promise((resolve)=> {
+    await new Promise((resolve)=> {
+        /* global setTimeout: true */
         setTimeout(resolve, duration);
     });
 }
@@ -101,53 +100,19 @@ export async function all(promises) {
 }
 
 
-/* global setTimeout:true */
-/* global Promise:true */
-
-export class Event {
-    constructor() {
-        this._promise = new Promise((resolve)=> {
-            this._resolve = resolve;
-        });
-    }
-
-    signal(result) {
-        this._resolve(result);
-    }
-
-    then(...args) {
-        return this._promise.then(...args);
-    }
-}
-
-
 export class TaskSet extends Set {
-    constructor() {
-        super();
-        //this.tasks = new Set();
-    }
-
     spawn(taskFunction) {
         let task = defer(taskFunction);
 
         this.add(task);
 
-        return task
-            .then((result)=> {
-                this.delete(task);
-                return result;
-            })
-            .catch((err)=> {
-                this.delete(task);
-                throw err;
-            });
+        return task.then((result)=> {
+            this.delete(task);
+            return result;
+        })
+        .catch((err)=> {
+            this.delete(task);
+            throw err;
+        });
     }
-
-    // get size() {
-    //     return this.tasks.size;
-    // }
-
-    // [Symbol.iterator]() {
-    //     return this.tasks[Symbol.iterator]();
-    // }
 }
