@@ -42,7 +42,7 @@ export function config(key) {
             let data = {};
 
             if (getConfigData !== undefined) {
-                data = getConfigData(key, this);
+                data = getConfigData();
             }
             return getConfig(key, data, this);
         };

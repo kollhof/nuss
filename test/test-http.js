@@ -1,27 +1,41 @@
 import {describe, it, expect} from './testing';
 import {createMocked} from 'nuss/testing';
-import {HttpRoute, http} from 'nuss/http';
-import {sleep} from 'nuss/async';
+import {HttpRoute, http, GET} from 'nuss/http';
 import {getDecoratedMethods} from 'nuss/ioc/decorators';
-
+import {match} from 'sinon';
 
 
 describe('HttpRoute()', ()=> {
-    it('should ', async ()=> {
+    let httpRoute = createMocked(HttpRoute, '/foobar/spam');
+    let {server} = httpRoute;
 
-        let httpRoute = createMocked(HttpRoute, '/foobar/spam');
+    it('should register root with server', ()=> {
 
-        expect(httpRoute.server.addRoute)
-            .to.have.been.calledWithMatch('get', '/foobar/spam', ()=> true)
+        expect(server.addRoute)
+            .to.have.been
+            .calledWithMatch(GET, '/foobar/spam', match.instanceOf(Function))
             .once;
+    });
 
-        await httpRoute.start();
-
+    it('should start and stop server', ()=> {
+        httpRoute.start();
         expect(httpRoute.server.start).to.have.been.called;
-        httpRoute.spawnWorker.reset();
 
-        await httpRoute.stop();
+        httpRoute.stop();
         expect(httpRoute.server.stop).to.have.been.called;
+    });
+
+    it('should spawn worker when server calls callback', ()=> {
+        let req = {};
+        let resp = {};
+
+        let [, , handleReq] = server.addRoute.getCall(0).args;
+
+        handleReq(req, resp);
+
+        expect(httpRoute.spawnWorker)
+            .to.have.been.calledWith(req, resp)
+            .once;
     });
 });
 

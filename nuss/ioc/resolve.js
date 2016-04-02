@@ -42,7 +42,7 @@ export function findProvider(decorator, target) {
 }
 
 export function getImplementationCtxDescriptor(decoration, target) {
-    let resolve = findProvider(getImplementationCtxDescriptor, target);
+    let getCtxDescr = findProvider(getImplementationCtxDescriptor, target);
     let defaultClass = InjectionContext;
 
     if (decoration.decoratedMethod) {
@@ -54,8 +54,8 @@ export function getImplementationCtxDescriptor(decoration, target) {
         constructorArgs: [decoration]
     };
 
-    if (resolve !== undefined) {
-        descr = resolve(decoration, target) || descr;
+    if (getCtxDescr !== undefined) {
+        descr = getCtxDescr(decoration, target) || descr;
     }
 
     return descr;

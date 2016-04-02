@@ -7,7 +7,7 @@ import {config} from './config';
 import express, {Router} from 'express';
 
 
-const GET='get';
+export const GET='get';
 
 
 export class HttpServer {

@@ -1,16 +1,11 @@
 import {getImplementation, provide} from './ioc/resolve';
 import {create} from './ioc/create';
 import {spawnWorker} from './worker';
-import {logger, BaseLogger} from './logging';
 
 import {stub, createStubInstance} from 'sinon';
 
 
 export class TestContainer {
-    @provide(logger)
-    getLogger() {
-        return createStubInstance(BaseLogger);
-    }
 
     @provide(spawnWorker)
     getSpawnWorker() {
