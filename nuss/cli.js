@@ -90,19 +90,21 @@ export function main() {
 
     parser.addArgument(
         ['--config'], {
-            help: 'configuration file'
+            help: 'importable configuration module (.json file or .js module)',
+            required: true
         }
     );
 
     parser.addArgument(
         ['--service'], {
-            help: 'foo bar'
+            help: 'importable module and class e.g. example/service:Foobar',
+            required: true
         }
     );
 
     parser.addArgument(
-        ['-r', '--require'], {
-            help: 'foo bar'
+        ['--require'], {
+            help: 'Extra require e.g. babel-register'
         }
     );
 

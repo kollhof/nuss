@@ -1,22 +1,19 @@
-import {sleep} from 'nuss/async';
 import {timer} from 'nuss/timer';
 import {http} from 'nuss/http';
 import {consumer, publisher} from 'nuss/messaging';
 import {logger} from 'nuss/logging';
 import {workerContext} from 'nuss/worker';
-import {getContext} from 'nuss/ioc/context';
-import {dependencyDecorator} from 'nuss/ioc/decorators';
-import {inspect} from 'util';
+
 
 const START_COUNTER = 0;
 const TIMER_SLEEP_TIME = 1000;
 
 
-let _cntr = START_COUNTER;
+let globalCounter = START_COUNTER;
 
 function inc() {
-    _cntr += 1;
-    return _cntr;
+    globalCounter += 1;
+    return globalCounter;
 }
 
 

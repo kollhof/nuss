@@ -1,5 +1,5 @@
-import {findDecoratedMethod} from './ioc/resolve';
-import {getContextDescr, getContexts, Context} from './ioc/context';
+import {findProvider} from './ioc/resolve';
+import {getContextDescr, getContexts} from './ioc/context';
 
 
 function* getPaths(target) {
@@ -14,20 +14,7 @@ function* getPaths(target) {
     }
 }
 
-function getProperty(obj, path) {
-    let val = obj;
-
-    for (let key of path.split('.')) {
-        val = val[key];
-        if (val === undefined) {
-            break;
-        }
-    }
-    return val;
-}
-
-
-function extractConfig(key, configData, target) {
+export function getConfig(key, configData, target) {
     let conf = configData;
     let result = conf[key];
 
@@ -51,9 +38,13 @@ function extractConfig(key, configData, target) {
 export function config(key) {
     return (proto, name, descr)=> {
         descr.initializer = function() {
-            let getConfig = findDecoratedMethod(config, this);
+            let getConfigData = findProvider(config, this);
+            let data = {};
 
-            return extractConfig(key, getConfig(key, this), this);
+            if (getConfigData !== undefined) {
+                data = getConfigData();
+            }
+            return getConfig(key, data, this);
         };
         return descr;
     };

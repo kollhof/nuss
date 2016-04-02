@@ -1,4 +1,5 @@
-import {findDecoratedMethod, handle} from './ioc/resolve';
+import {provide} from './ioc/resolve';
+import {dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
 import {Context} from './ioc/context';
 import {shortid} from './uuid';
@@ -24,7 +25,7 @@ export class WorkerContext extends Context {
         return this.headers[key];
     }
 
-    @handle(workerContext)
+    @provide(workerContext)
     getContext() {
         return this;
     }
@@ -43,36 +44,22 @@ export class AutoWorker {
 
 
 export function workerContext(proto, name, descr) {
-    descr.initializer = function() {
-        let getWorkerCtx = findDecoratedMethod(workerContext, this);
-        return getWorkerCtx ? getWorkerCtx() : undefined;
-    };
-    return descr;
+    return dependencyDecorator(workerContext, {
+        dependencyClass: WorkerContext
+    })(proto, name, descr);
 }
 
 
 export function spawn(proto, name, descr) {
-    descr.initializer = function() {
-        let spawnTask = findDecoratedMethod(spawn, this);
-        return spawnTask;
-    };
-    return descr;
+    return dependencyDecorator(spawn, {})(proto, name, descr);
 }
 
-function spawnWorkerDecorator(decorator, wokerClass) {
-    return (proto, name, descr)=> {
-        descr.initializer = function() {
-            let spawnWrk = findDecoratedMethod(decorator, this)
-                .bind(null, this, wokerClass);
-            return spawnWrk;
-        };
-        return descr;
-    };
-}
 
 export function spawnWorker(wokerClassOrProto, name, descr) {
     if (name === undefined && descr === undefined) {
-        return spawnWorkerDecorator(spawnWorker, wokerClassOrProto);
+        return dependencyDecorator(spawnWorker, {
+            dependencyClass: wokerClassOrProto
+        });
     }
     return spawnWorker(AutoWorker)(wokerClassOrProto, name, descr);
 }
