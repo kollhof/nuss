@@ -2,11 +2,14 @@ import {SQS} from 'aws-sdk';
 
 import {dependencyDecorator} from '../ioc/decorators';
 import {config} from '../config';
-
+import {logger} from '../logging';
 
 class AsyncSQS {
     @config('aws')
     config
+
+    @logger
+    log
 
     constructor() {
         this.sqs = new SQS(this.config);

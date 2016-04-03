@@ -8,7 +8,7 @@ import {getContext} from './ioc/context';
 import {WorkerContext, spawn, spawnWorker} from './worker';
 import {all, TaskSet} from './async';
 import {logger} from './logging';
-import {config} from './config';
+import {configData} from './config';
 
 
 
@@ -16,9 +16,9 @@ export class Container {
     @logger
     log
 
-    constructor(ServiceClass, configData) {
+    constructor(ServiceClass, config) {
         this.ServiceClass = ServiceClass;
-        this.config = configData;
+        this.config = config;
         this.entrypoints = [];
         this.activeTasks = new TaskSet();
     }
@@ -151,8 +151,8 @@ export class Container {
         this.log.debug`resolving ctx class for ${decoration.decorator}`;
     }
 
-    @provide(config)
-    getConfig() {
+    @provide(configData)
+    getConfigData() {
         return this.config;
     }
 }

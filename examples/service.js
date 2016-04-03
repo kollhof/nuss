@@ -3,7 +3,7 @@ import {http} from 'nuss/http';
 import {consumer, publisher} from 'nuss/messaging';
 import {logger} from 'nuss/logging';
 import {workerContext} from 'nuss/worker';
-
+import {config} from 'nuss/config';
 
 const START_COUNTER = 0;
 const TIMER_SLEEP_TIME = 1000;
@@ -27,6 +27,8 @@ export class Foobar {
     @workerContext
     workerCtx
 
+    @config('shrub')
+    spam
 
     @consumer('foobar')
     async ni(msg) {
@@ -45,6 +47,7 @@ export class Foobar {
         let cntr = inc();
 
         log.debug`-----${cntr}-----`;
+        log.debug`config: ${this.spam}`;
         this.shrub({ni: cntr});
         log.debug`ctx headers ${this.workerCtx.headers}`;
         log.debug`-----------------`;

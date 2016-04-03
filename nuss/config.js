@@ -1,51 +1,127 @@
-import {findProvider} from './ioc/resolve';
-import {getContextDescr, getContexts} from './ioc/context';
+import {value} from './ioc/create';
+import {getContexts} from './ioc/context';
+import {decorations, dependencyDecorator} from './ioc/decorators';
+import {Logger} from './logging';
+
+let log = new Logger('spam');
 
 
-function* getPaths(target) {
-    let contexts = Array.from(getContexts(target));
-    contexts.reverse();
+export function getConfigPath(decoration) {
+    let {decorator, decoratorDescr} = decoration;
+    let conf = decoratorDescr.config;
 
-    for (let ctx of contexts) {
-        let {dec} = getContextDescr(ctx);
-        if (dec !== undefined) {
-            yield dec;
-        }
-    }
-}
-
-export function getConfig(key, configData, target) {
-    let conf = configData;
-    let result = conf[key];
-
-    for (let path of getPaths(target, key)) {
-
-        conf = conf[path];
-
-        if (conf === undefined) {
-            break;
-        }
-
-        let val = conf[key];
-        if (val !== undefined) {
-            result = val;
-        }
+    if (conf === undefined) {
+        return [`${decorator.name}`];
     }
 
-    return result;
+    let {key, path} = conf;
+
+    if (path === undefined) {
+        path = [];
+    } else {
+        path = [`${decorator.name}`].concat(path);
+    }
+
+    if (key !== undefined) {
+        path.push(`${key}`);
+    }
+    return path;
 }
 
-export function config(key) {
-    return (proto, name, descr)=> {
-        descr.initializer = function() {
-            let getConfigData = findProvider(config, this);
-            let data = {};
+function* getConfigPaths(cls, parents=[]) {
+    for (let decoration of decorations(cls)) {
+        let decPath = parents.concat(getConfigPath(decoration));
 
-            if (getConfigData !== undefined) {
-                data = getConfigData();
+
+        if (decoration.decorator === config) {
+            yield decPath;
+        } else {
+            let {decoratorDescr} = decoration;
+            if (decoratorDescr !== undefined) {
+                let {dependencyClass} = decoratorDescr;
+                yield * getConfigPaths(dependencyClass, decPath);
             }
-            return getConfig(key, data, this);
-        };
-        return descr;
-    };
+        }
+
+    }
+}
+
+export function foobar(cls) {
+    for (let configPath of getConfigPaths(cls)) {
+        log.debug`${configPath}`;
+    }
+}
+
+
+function getPath(target) {
+    let path = [];
+
+    let classes = new Set();
+
+    for (let ctx of getContexts(target)) {
+        let {decoration} = ctx;
+        if (decoration !== undefined) {
+            let {decoratedClass} = decoration;
+            if (classes.has(decoratedClass)) {
+                return path;
+            }
+            classes.add(decoratedClass);
+            path.unshift(...getConfigPath(decoration));
+        }
+    }
+    return path;
+}
+
+
+export function configData(proto, name, descr) {
+    return dependencyDecorator(configData, {
+        dependencyClass: Object,
+        constructorArgs: []
+    })(proto, name, descr);
+}
+
+
+class ConfigProvider {
+    @configData
+    data
+
+    @value
+    get value() {
+        let {data} = this;
+
+        let path = getPath(this);
+        let key = path.pop();
+        let result = data[key];
+
+        for (let confKey of path) {
+
+            data = data[confKey];
+            if (data === undefined) {
+                break;
+            }
+
+            let val = data[key];
+            if (val !== undefined) {
+                result = val;
+            }
+        }
+
+        return result;
+    }
+}
+
+export function config(key, descr) {
+    let path = [];
+    if (key !== undefined) {
+        path.push(key);
+    }
+
+    return dependencyDecorator(config, {
+        dependencyClass: ConfigProvider,
+        constructorArgs: [],
+        config: {
+            key,
+            description: descr
+        }
+    });
 }

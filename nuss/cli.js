@@ -3,6 +3,7 @@
 
 import {ArgumentParser} from 'argparse';
 import {logger} from './logging';
+import {foobar} from './config';
 import {Container} from './container';
 import path from 'path';
 
@@ -29,6 +30,11 @@ export class Nuss {
         let [modFile, clsName] = args.service.split(':');
         let mod = require(path.resolve(modFile));
         let cls = mod[clsName];
+        if (args.list_config) {
+            foobar(cls);
+            return;
+        }
+
         let config = require(path.resolve(args.config)).default;
 
         let runner = new Container(cls, config);
@@ -89,9 +95,17 @@ export function main() {
     });
 
     parser.addArgument(
+        ['--list-config'], {
+            help: 'show config for a service',
+            action: 'storeTrue'
+        }
+    );
+
+
+    parser.addArgument(
         ['--config'], {
             help: 'importable configuration module (.json file or .js module)',
-            required: true
+            required: false
         }
     );
 

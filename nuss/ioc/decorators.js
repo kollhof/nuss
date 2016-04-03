@@ -2,7 +2,7 @@ import {DefaultWeakMap} from '../default-maps';
 import {getImplementation} from './resolve';
 
 const DECORATED_METHODS = new DefaultWeakMap(()=> []);
-
+const DECORATED_PROPS = new DefaultWeakMap(()=> []);
 
 export function* getDecoratedMethods(cls) {
     let decoratorMethodDescr = DECORATED_METHODS.get(cls.prototype);
@@ -10,6 +10,11 @@ export function* getDecoratedMethods(cls) {
     for (let descr of decoratorMethodDescr) {
         yield descr;
     }
+}
+
+export function* decorations(cls) {
+    yield * DECORATED_PROPS.get(cls.prototype);
+    yield * getDecoratedMethods(cls);
 }
 
 export function methodDecorator(decorator, decoratorDescr) {
@@ -59,6 +64,10 @@ export function dependencyDecorator(decorator, decoratorDescr) {
             decoratedName: name
         };
 
+        DECORATED_PROPS
+            .get(proto)
+            .push(decoration);
+
         descr.writable = true;
         descr.initializer = function() {
             let sharingKey = decoratorDescr.sharingKey;
@@ -72,7 +81,6 @@ export function dependencyDecorator(decorator, decoratorDescr) {
             }
 
             setShared(decorator, sharingKey, obj);
-
             return obj;
         };
         return descr;

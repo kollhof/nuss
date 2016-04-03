@@ -30,6 +30,7 @@ export class InvokerContext extends Context {
 
 export function* getContexts(obj) {
     let ctx = obj;
+
     if (!(ctx instanceof Context)) {
         ctx = getContext(obj) || ctx;
     }

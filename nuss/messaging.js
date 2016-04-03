@@ -2,6 +2,7 @@ import {methodDecorator, dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
 import {spawnWorker, spawn, workerContext} from './worker';
 import {logger} from './logging';
+import {config} from './config';
 
 import {asyncSQS} from './aws/sqs';
 
@@ -49,6 +50,12 @@ class Publisher {
     @workerContext
     workerCtx
 
+    @config(undefined, 'The name of the queue given in the configuration')
+    queue
+
+    @config('queuePrefix')
+    queuePrefix
+
     constructor(queue) {
         this.queue = queue;
     }
@@ -88,7 +95,11 @@ class Publisher {
 export function publisher(queue) {
     return dependencyDecorator(publisher, {
         dependencyClass: Publisher,
-        constructorArgs: [queue]
+        constructorArgs: [queue],
+        config: {
+            key: queue,
+            path: ['queues']
+        }
     });
 }
 
@@ -141,6 +152,9 @@ class Consumer {
 
     @logger
     log
+
+    @config(undefined, 'The name of the queue given in the configuration')
+    queue
 
     constructor(queue) {
         this.queue = queue;
@@ -210,6 +224,10 @@ class Consumer {
 export function consumer(queue) {
     return methodDecorator(consumer, {
         dependencyClass: Consumer,
-        constructorArgs: [queue]
+        constructorArgs: [queue],
+        config: {
+            key: queue,
+            path: ['queues']
+        }
     });
 }

@@ -143,6 +143,7 @@ export class Logger extends BaseLogger {
 }
 
 export function logger(proto, name, descr) {
+    // TODO: do this in initializer?
     proto[name] = new BaseLogger();
 
     descr.writable = true;
