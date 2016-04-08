@@ -1,18 +1,13 @@
 import {DefaultWeakMap} from '../default-maps';
 import {create} from './create';
-import {getContext, InjectionContext, InvokerContext} from './context';
+import {getContext} from './context';
 
 const IMPLEMENTATION_PROVIDERS = new DefaultWeakMap(()=> new Map());
 
 
-function createFromDescr({dependencyClass, constructorArgs}, ctx) {
-    return create(dependencyClass, constructorArgs, ctx);
-}
-
-
-export function createdDecoratedHandler(decoration, ctx) {
+export function createDecoratedHandler(decoration, target) {
     let {decoratedClass, decoratedMethod} = decoration;
-    let obj = create(decoratedClass, [], ctx);
+    let obj = create(decoratedClass, [], {decoration, target});
     return decoratedMethod.bind(obj);
 }
 
@@ -23,42 +18,23 @@ export function provide(decorator) {
     };
 }
 
-export function findProvider(decorator, target) {
-    let ctx = getContext(target) || target;
 
-    while (ctx) {
-        // Object.getPrototypeOf(ctx);
-        let proto = ctx.constructor.prototype;
+export function findProvider(decorator, target) {
+    let ctx = getContext(target);
+
+    while (ctx !== undefined) {
+        let provider = ctx.target;
+        let proto = provider.constructor.prototype;
 
         let func = IMPLEMENTATION_PROVIDERS
             .get(proto)
             .get(decorator);
 
         if (func !== undefined) {
-            return func.bind(ctx);
+            return func.bind(provider);
         }
-        ctx = getContext(ctx);
+        ctx = getContext(provider);
     }
-}
-
-export function getImplementationCtxDescriptor(decoration, target) {
-    let getCtxDescr = findProvider(getImplementationCtxDescriptor, target);
-    let defaultClass = InjectionContext;
-
-    if (decoration.decoratedMethod) {
-        defaultClass = InvokerContext;
-    }
-
-    let descr = {
-        dependencyClass: defaultClass,
-        constructorArgs: [decoration]
-    };
-
-    if (getCtxDescr !== undefined) {
-        descr = getCtxDescr(decoration, target) || descr;
-    }
-
-    return descr;
 }
 
 
@@ -78,14 +54,13 @@ function getImplementationFromProvider(decoration, target) {
 
 export function getImplementation(decoration, target) {
     let obj = getImplementationFromProvider(decoration, target);
+
     if (obj !== undefined) {
         return obj;
     }
 
-    let {decoratorDescr} = decoration;
+    let {dependencyClass, constructorArgs} = decoration.decoratorDescr;
 
-    let ctxDescr = getImplementationCtxDescriptor(decoration, target);
-    let ctx = createFromDescr(ctxDescr, getContext(target) || target);
-    return createFromDescr(decoratorDescr, ctx);
+    return create(dependencyClass, constructorArgs, {decoration, target});
 }
 

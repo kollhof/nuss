@@ -1,4 +1,4 @@
-
+// TODO: use WeakMap
 const CONTEXT = Symbol('context');
 
 
@@ -7,56 +7,36 @@ export function setContext(obj, ctx) {
 }
 
 export function getContext(obj) {
-    return obj[CONTEXT];
+    return obj === undefined ? undefined : obj[CONTEXT];
 }
 
-
-export class Context {
-}
-
-export class InjectionContext extends Context {
-    constructor(decoration) {
-        super();
-        this.decoration = decoration;
-    }
-}
-
-export class InvokerContext extends Context {
-    constructor(decoration) {
-        super();
-        this.decoration = decoration;
-    }
-}
 
 export function* getContexts(obj) {
-    let ctx = obj;
-
-    if (!(ctx instanceof Context)) {
-        ctx = getContext(obj) || ctx;
-    }
+    let ctx = getContext(obj) || {target: obj};
 
     while (ctx !== undefined) {
         yield ctx;
-        ctx = getContext(ctx);
+        ctx = getContext(ctx.target);
     }
 }
 
 export function getContextDescr(ctx) {
-    let {decoration} = ctx;
+    let {decoration, target} = ctx;
 
     if (decoration !== undefined) {
         let {decorator, decoratedClass, decoratedName} = decoration;
 
         return {
-            ctx: ctx.constructor.name,
+            ctx: target.constructor.name,
             cls: decoratedClass.name,
             nme: decoratedName,
-            dec: decorator.name
+            dec: decorator.name,
+            id: target.id
         };
     }
 
     return {
-        ctx: ctx.constructor.name,
-        id: ctx.id
+        ctx: `${target.constructor.name}`,
+        id: target.id
     };
 }

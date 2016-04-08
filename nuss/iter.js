@@ -11,3 +11,9 @@ export function* range(start, stop) {
         start += 1;
     }
 }
+
+
+export function array(items) {
+    return Array.from(items);
+}
+

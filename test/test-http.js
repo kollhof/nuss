@@ -33,7 +33,7 @@ describe('HttpRoute()', ()=> {
 
         handleReq(req, resp);
 
-        expect(httpRoute.spawnWorker)
+        expect(httpRoute.handleRequest)
             .to.have.been.calledWith(req, resp)
             .once;
     });
@@ -56,7 +56,11 @@ describe('@http()', ()=> {
             decorator: http,
             decoratorDescr: {
                 dependencyClass: HttpRoute,
-                constructorArgs: ['/foobar/spam']
+                constructorArgs: ['/foobar/spam'],
+                config: {
+                    description: 'Configuration for the HTTP-server',
+                    key: 'http'
+                }
             },
             decoratedClass: Foobar,
             decoratedMethod: Foobar.prototype.spam,

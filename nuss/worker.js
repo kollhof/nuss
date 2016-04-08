@@ -1,18 +1,15 @@
 import {provide} from './ioc/resolve';
 import {dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
-import {Context} from './ioc/context';
-import {defer} from './async';
 import {shortid} from './uuid';
 
 
-export class WorkerContext extends Context {
+export class WorkerContext {
     id = shortid()
 
     headers = {}
 
     constructor() {
-        super();
         this.setHeader('trace', this.id);
     }
 
@@ -44,25 +41,12 @@ export class AutoWorker {
 }
 
 
-export class Spawner {
-    @callable
-    spawnit(taskFunc) {
-        return defer(taskFunc);
-    }
-}
-
 export function workerContext(proto, name, descr) {
     return dependencyDecorator(workerContext, {
         dependencyClass: WorkerContext
     })(proto, name, descr);
 }
 
-
-export function spawn(proto, name, descr) {
-    return dependencyDecorator(spawn, {
-        dependencyClass: Spawner
-    })(proto, name, descr);
-}
 
 export function spawnWorker(wokerClassOrProto, name, descr) {
     if (name === undefined && descr === undefined) {

@@ -10,17 +10,17 @@ const SLEEP_TIME = 1;
 describe('Timer()', ()=> {
     it('should start and call spawnWorker() and stop', async ()=> {
         let tmr = new Timer(0);
-        tmr.spawnWorker = spy();
+        tmr.handleTick = spy();
         tmr.log = {debug: spy()};
 
         await tmr.start();
         await sleep(SLEEP_TIME);
-        expect(tmr.spawnWorker).to.have.been.called;
-        tmr.spawnWorker.reset();
+        expect(tmr.handleTick).to.have.been.called;
+        tmr.handleTick.reset();
 
         await tmr.stop();
         await sleep(SLEEP_TIME);
-        expect(tmr.spawnWorker).to.have.not.been.called;
+        expect(tmr.handleTick).to.have.not.been.called;
     });
 });
 

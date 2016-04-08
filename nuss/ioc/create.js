@@ -12,6 +12,10 @@ export function value(proto, name, descr) {
     SPECIALS.set(proto, {val: descr.value || descr.get});
 }
 
+export function isCallable(cls) {
+    return SPECIALS.has(cls.prototype);
+}
+
 export function create(cls, args=[], ctx) {
     let Class = class extends cls {
         constructor() {

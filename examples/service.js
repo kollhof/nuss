@@ -21,14 +21,15 @@ export class Foobar {
     @logger
     log
 
-    @publisher('foobar')
-    shrub
-
     @workerContext
     workerCtx
 
     @config('shrub')
     spam
+
+    @publisher('foobar')
+    shrub
+
 
     @consumer('foobar')
     async ni(msg) {
@@ -41,6 +42,18 @@ export class Foobar {
         log.debug`------------------`;
     }
 
+    @consumer('spam')
+    async ni(msg) {
+        let {log} = this;
+        let cntr = inc();
+
+        log.debug`-----${cntr}-----`;
+        log.debug`message ${msg}`;
+        log.debug`ctx headers ${this.workerCtx.headers}`;
+        log.debug`------------------`;
+    }
+
+
     @timer(TIMER_SLEEP_TIME)
     async handle1() {
         let {log} = this;
@@ -48,7 +61,7 @@ export class Foobar {
 
         log.debug`-----${cntr}-----`;
         log.debug`config: ${this.spam}`;
-        this.shrub({ni: cntr});
+        await this.shrub({ni: cntr});
         log.debug`ctx headers ${this.workerCtx.headers}`;
         log.debug`-----------------`;
     }
@@ -61,7 +74,7 @@ export class Foobar {
         log.debug`-----${cntr}-----`;
         this.log.debug`http: ${req.headers}`;
         log.debug`ctx headers ${this.workerCtx.headers}`;
-        resp.end(`Hello World:\n`);
+        resp.end(`Hello World: ${cntr}\n`);
         log.debug`-----------------`;
     }
 
@@ -73,9 +86,8 @@ export class Foobar {
         log.debug`-----${cntr}-----`;
         this.log.debug`http: ${req.headers}`;
         log.debug`ctx headers ${this.workerCtx.headers}`;
-        this.shrub({ni: cntr});
+        await this.shrub({ni: cntr});
         resp.end(`Hello World 2: ${cntr}`);
         log.debug`-----------------`;
     }
 }
-

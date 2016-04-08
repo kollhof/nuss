@@ -34,13 +34,28 @@ cover-check: cover
 
 example:
 	NODE_PATH=. node -r babel-register \
-		nuss/cli.js --config ./config/foo-config \
+		nuss/cli.js \
+			--config ./config/config.yaml \
+			--service examples/service:Foobar
+
+example-dbg:
+	NODE_PATH=. node --debug-brk -r babel-register \
+		nuss/cli.js --config ./config/config.yaml \
 		--service examples/service:Foobar
+
+example-docker: build
+	$(NODE_BIN)/babel examples --out-dir build/examples --source-maps
+	$(NODE_BIN)/babel config --out-dir build/examples --source-maps
+	cp examples/Dockerfile build/examples/
+	cp -r build/nuss build/examples/
+	docker build -t nuss-example build/examples
 
 example2:
 	NODE_PATH=. node -r babel-register \
-		nuss/cli.js --list-config \
-		--service examples/service:Foobar
+		nuss/cli.js \
+			--list-config \
+			--config ./config/config.yaml \
+			--service examples/service:Foobar
 dev:
 	npm install
 

@@ -14,19 +14,19 @@ export class HttpServer {
     @logger
     log
 
-    @config('rootUrl')
+    @config('rootUrl', 'The base URL for all routes.')
     rootUrl
 
-    @config('port')
+    @config('port', 'The port to listen on.')
     port
 
     constructor() {
         this.started = null;
         this.stopped = null;
         this.server = null;
-
         this.router = new Router();
         this.app = express();
+        this.connections = new Set();
     }
 
     addRoute(verb, route, handler) {
@@ -57,23 +57,37 @@ export class HttpServer {
     }
 
     async startServer() {
-        let {log, port, rootUrl, app} = this;
+        let {log, port, rootUrl, app, connections} = this;
 
         log.debug`starting server`;
 
         app.use(rootUrl, this.router);
         await new Promise((resolve)=> {
             this.server = app.listen(port, resolve);
+            this.server.on('connection', (conn)=> {
+                connections.add(conn);
+                conn.on('close', ()=> connections.delete(conn));
+            });
         });
 
         log.debug`server listening at 'localhost:${port}${rootUrl}'`;
     }
 
     async stopServer() {
-        this.log.debug`stopping server`;
-        await new Promise((resolve)=>
-            this.server.close(resolve));
-        this.log.debug`stopped server`;
+        let {log} = this;
+
+        log.debug`stopping server`;
+
+        await new Promise((resolve)=> {
+            this.server.close(resolve);
+            for (let conn of this.connections) {
+                conn.setTimeout(10, ()=> {
+                    log.error`destryoing connection`;
+                    conn.destroy();
+                });
+            }
+        });
+        log.debug`stopped server`;
     }
 }
 
@@ -125,19 +139,12 @@ export class HttpRoute {
     @httpServer
     server
 
-    @logger
-    log
-
     @spawnWorker(RequestWorker)
-    spawnWorker
+    handleRequest
 
     constructor(route) {
         this.server
             .addRoute(GET, route, (...args)=> this.handleRequest(...args));
-    }
-
-    handleRequest(req, resp) {
-        this.spawnWorker(req, resp);
     }
 
     async start() {
@@ -145,7 +152,6 @@ export class HttpRoute {
     }
 
     async stop() {
-        this.log.debug`stopping route`;
         await this.server.stop();
     }
 }
@@ -153,7 +159,11 @@ export class HttpRoute {
 export function http(route) {
     return methodDecorator(http, {
         dependencyClass: HttpRoute,
-        constructorArgs: [route]
+        constructorArgs: [route],
+        config: {
+            key: 'http',
+            description: 'Configuration for the HTTP-server'
+        }
     });
 }
 

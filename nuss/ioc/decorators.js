@@ -3,19 +3,35 @@ import {getImplementation} from './resolve';
 
 const DECORATED_METHODS = new DefaultWeakMap(()=> []);
 const DECORATED_PROPS = new DefaultWeakMap(()=> []);
+const SHARED = new DefaultWeakMap(()=> new Map());
 
-export function* getDecoratedMethods(cls) {
-    let decoratorMethodDescr = DECORATED_METHODS.get(cls.prototype);
 
-    for (let descr of decoratorMethodDescr) {
-        yield descr;
+function getShared(decorator, sharingKey) {
+    if (sharingKey !== undefined) {
+        return SHARED.get(decorator).get(sharingKey);
     }
 }
 
+function setShared(decorator, sharingKey, obj) {
+    if (sharingKey !== undefined) {
+        SHARED.get(decorator).set(sharingKey, obj);
+    }
+}
+
+
+export function getDecoratedMethods(cls) {
+    return DECORATED_METHODS.get(cls.prototype);
+}
+
+export function getDecoratedProps(cls) {
+    return DECORATED_PROPS.get(cls.prototype);
+}
+
 export function* decorations(cls) {
-    yield * DECORATED_PROPS.get(cls.prototype);
+    yield * getDecoratedProps(cls);
     yield * getDecoratedMethods(cls);
 }
+
 
 export function methodDecorator(decorator, decoratorDescr) {
     return (proto, name, descr)=> {
@@ -37,22 +53,6 @@ export function methodDecorator(decorator, decoratorDescr) {
         return descr;
     };
 }
-
-
-const SHARED = new DefaultWeakMap(()=> new Map());
-
-function getShared(decorator, sharingKey) {
-    if (sharingKey !== undefined) {
-        return SHARED.get(decorator).get(sharingKey);
-    }
-}
-
-function setShared(decorator, sharingKey, obj) {
-    if (sharingKey !== undefined) {
-        SHARED.get(decorator).set(sharingKey, obj);
-    }
-}
-
 
 export function dependencyDecorator(decorator, decoratorDescr) {
     return (proto, name, descr)=> {

@@ -5,7 +5,7 @@ import {logger} from './logging';
 
 export class Timer {
     @spawnWorker
-    spawnWorker
+    handleTick
 
     @logger
     log
@@ -20,7 +20,7 @@ export class Timer {
 
         /* global setInterval:true*/
         this.interval = setInterval(
-            ()=> this.spawnWorker(),
+            ()=> this.handleTick(),
             this.duration
         );
     }

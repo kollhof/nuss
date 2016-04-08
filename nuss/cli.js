@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 'use strict';
 
-import {ArgumentParser} from 'argparse';
-import {logger} from './logging';
-import {foobar} from './config';
-import {Container} from './container';
 import path from 'path';
+
+import {ArgumentParser} from 'argparse';
+import yaml from 'js-yaml';
+
+import {logger} from './logging';
+import {printConfig, flattenConfigData} from './config';
+import {Container} from './container';
+import {fileSystem} from './filesystem';
+import {create} from './ioc/create';
+import {provide} from './ioc/resolve';
+import {configData} from './config';
 
 const EXIT_NO_ERROR = 0;
 const EXIT_ERROR = 1;
@@ -15,11 +22,16 @@ export class Nuss {
     @logger
     log
 
+    @fileSystem
+    fs
+
     constructor(process) {
         this.process = process;
     }
 
     async main(args) {
+        let {log, fs} = this;
+
         this.registerProcessEvents();
 
         if (args.require) {
@@ -27,17 +39,27 @@ export class Nuss {
             require(args.require);
         }
 
+        let configFile = path.resolve(args.config);
         let [modFile, clsName] = args.service.split(':');
-        let mod = require(path.resolve(modFile));
+        modFile = path.resolve(modFile);
+
+        log.debug`loading service module ${modFile}`;
+        let mod = require(modFile);
         let cls = mod[clsName];
+
         if (args.list_config) {
-            foobar(cls);
+            printConfig(cls);
             return;
         }
 
-        let config = require(path.resolve(args.config)).default;
+        log.debug`loading config ${configFile}`;
+        let configSrc = await fs.readFile(configFile);
+        let configRaw = yaml.safeLoad(configSrc);
 
-        let runner = new Container(cls, config);
+        log.debug`parsing config`;
+        this.config = flattenConfigData(cls, configRaw);
+        //TODO: use decorator
+        let runner = create(Container, [cls], {target: this});
         this.runner = runner;
         await runner.start();
     }
@@ -56,10 +78,10 @@ export class Nuss {
     handleUnhandledRejection(reason) {
         let {log, process} = this;
 
-        log.error`unhandled async: ${reason.stack}`;
+        log.error`unhandled async: ${reason}`;
         if (reason.errors) {
             for (let err of reason.errors) {
-                log.error`${err.stack}`;
+                log.error`--- ${err}`;
             }
         }
 
@@ -67,6 +89,10 @@ export class Nuss {
         process.exit(EXIT_ERROR);
     }
 
+    @provide(configData)
+    getConfigData() {
+        return this.config;
+    }
 
     async stop(signal) {
         let {log, runner, process} = this;

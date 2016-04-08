@@ -1,6 +1,6 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
-import {spawnWorker, spawn, workerContext} from './worker';
+import {spawnWorker, workerContext} from './worker';
 import {logger} from './logging';
 import {config} from './config';
 
@@ -27,7 +27,7 @@ async function getQueueUrl(queue, sqs) {
     return data.QueueUrl;
 }
 
-function trasnferHeadersToCtx(msg, ctx) {
+function transferHeadersToCtx(msg, ctx) {
     let attrs = msg.MessageAttributes;
 
     for (let key of ['foobar', 'trace']) {
@@ -50,15 +50,8 @@ class Publisher {
     @workerContext
     workerCtx
 
-    @config(undefined, 'The name of the queue given in the configuration')
+    @config('name', 'The name of the queue.')
     queue
-
-    @config('queuePrefix')
-    queuePrefix
-
-    constructor(queue) {
-        this.queue = queue;
-    }
 
     async getQueueUrl() {
         return await getQueueUrl(this.queue, this.sqs);
@@ -97,8 +90,9 @@ export function publisher(queue) {
         dependencyClass: Publisher,
         constructorArgs: [queue],
         config: {
+            description: `Queue for @publisher('${queue}')`,
             key: queue,
-            path: ['queues']
+            path: [{key: 'queues', description: 'SQS configuration'}]
         }
     });
 }
@@ -122,7 +116,7 @@ export class MessageWorker {
     async processMessage(handler) {
         let {log, queueUrl, msg, workerCtx} = this;
 
-        trasnferHeadersToCtx(msg, workerCtx);
+        transferHeadersToCtx(msg, workerCtx);
 
         try {
             await handler(msg.Body);
@@ -147,19 +141,16 @@ class Consumer {
     @spawnWorker(MessageWorker)
     processMessage
 
-    @spawn
-    spawn
-
     @logger
     log
 
-    @config(undefined, 'The name of the queue given in the configuration')
+    @config('name', 'The name of the queue.')
     queue
 
-    constructor(queue) {
-        this.queue = queue;
+    constructor() {
         this.queueUrl = null;
         this.stopped = false;
+        this.pollingTask = null;
     }
 
     async ensureQueueExists() {
@@ -172,9 +163,9 @@ class Consumer {
         log.debug`starting consumer`;
         await this.ensureQueueExists();
 
-        log.debug`spawning message polling`;
-        this.spawn(()=> this.pollMessages());
-        log.debug`spawned message polling`;
+        this.pollingTask = this.pollMessages();
+
+        log.debug`consumer started`;
     }
 
     async fetchMessages() {
@@ -194,14 +185,20 @@ class Consumer {
         return data.Messages || [];
     }
 
-
     async pollMessages() {
         let {log, queue, queueUrl} = this;
 
         log.debug`start polling`;
 
         while (!this.stopped) {
-            let messages = await this.fetchMessages();
+            let messages;
+
+            try {
+                messages = await this.fetchMessages();
+            } catch (err) {
+                log.error`error fetching messages: ${err} `;
+                continue;
+            }
 
             log.debug`processing messages ${messages.length} from ${queue}`;
 
@@ -216,8 +213,11 @@ class Consumer {
     async stop() {
         let {log} = this;
 
-        log.debug`stop consumer`;
+        log.debug`stopping consumer`;
         this.stopped = true;
+        this.sqs.stop();
+        await this.pollingTask;
+        log.debug`consumer stopped`;
     }
 }
 
@@ -226,8 +226,9 @@ export function consumer(queue) {
         dependencyClass: Consumer,
         constructorArgs: [queue],
         config: {
-            key: queue,
-            path: ['queues']
+            path: [{key: 'queues', description: 'SQS configuration'}],
+            description: `Queue for @consumer('${queue}')`,
+            key: queue
         }
     });
 }
