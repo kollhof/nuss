@@ -24,8 +24,8 @@ export class Foobar {
     @workerContext
     workerCtx
 
-    @config('shrub')
-    spam
+    @config('Important spam config')
+    spam='ham'
 
     @publisher('foobar')
     shrub
@@ -41,18 +41,6 @@ export class Foobar {
         log.debug`ctx headers ${this.workerCtx.headers}`;
         log.debug`------------------`;
     }
-
-    @consumer('spam')
-    async ni(msg) {
-        let {log} = this;
-        let cntr = inc();
-
-        log.debug`-----${cntr}-----`;
-        log.debug`message ${msg}`;
-        log.debug`ctx headers ${this.workerCtx.headers}`;
-        log.debug`------------------`;
-    }
-
 
     @timer(TIMER_SLEEP_TIME)
     async handle1() {

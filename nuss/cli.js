@@ -47,7 +47,7 @@ export class Nuss {
         let mod = require(modFile);
         let cls = mod[clsName];
 
-        if (args.list_config) {
+        if (args.generate_config) {
             printConfig(cls);
             return;
         }
@@ -121,12 +121,11 @@ export function main() {
     });
 
     parser.addArgument(
-        ['--list-config'], {
-            help: 'show config for a service',
+        ['--generate-config'], {
+            help: 'Generate a config file for a service',
             action: 'storeTrue'
         }
     );
-
 
     parser.addArgument(
         ['--config'], {

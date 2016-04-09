@@ -143,7 +143,7 @@ function formatItem(obj) {
 
 export class Logger extends BaseLogger {
     @config('level', 'Log level (error, info, debug)')
-    level
+    level='error'
 
     constructor() {
         super();
@@ -163,7 +163,7 @@ export class Logger extends BaseLogger {
         let clr = COLOR_MAP[level] || RESET;
 
         /* global process: true */
-        process.stderr.write(`${clr}${level[0]}${RESET}:${prefix}: ${msg}\n`);
+        process.stdout.write(`${clr}${level[0]}${RESET}:${prefix}: ${msg}\n`);
     }
 
     timeit() {
@@ -174,7 +174,7 @@ export class Logger extends BaseLogger {
 
 export function logger(proto, name, descr) {
     // TODO:
-    proto[name] = new BaseLogger();
+    //proto[name] = new BaseLogger();
 
     descr.writable = true;
     return dependencyDecorator(logger, {
@@ -182,7 +182,8 @@ export function logger(proto, name, descr) {
         constructorArgs: [proto],
         config: {
             key: 'logging',
-            path: '/'
+            path: '/',
+            description: 'Logging configuration'
         }
     })(proto, name, descr);
 }

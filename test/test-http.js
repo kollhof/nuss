@@ -58,8 +58,8 @@ describe('@http()', ()=> {
                 dependencyClass: HttpRoute,
                 constructorArgs: ['/foobar/spam'],
                 config: {
-                    description: 'Configuration for the HTTP-server',
-                    key: 'http'
+                    key: 'http',
+                    path: '/'
                 }
             },
             decoratedClass: Foobar,

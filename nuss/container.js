@@ -4,11 +4,14 @@ import {
 } from './ioc/resolve';
 import {create} from './ioc/create';
 import {getContext} from './ioc/context';
-import {WorkerContext, spawnWorker} from './worker';
+import {WorkerContext, worker} from './worker';
 import {all, TaskSet} from './async';
 import {logger} from './logging';
 
 
+export function shared(proto, name, descr) {
+
+}
 
 export class Container {
     @logger
@@ -129,8 +132,8 @@ export class Container {
         log.debug`worker ${workerCtx} completed in ${log.elapsed} ms`;
     }
 
-    @provide(spawnWorker)
-    spawnWorker(decoration, source) {
+    @provide(worker)
+    worker(decoration, source) {
         let workerClass = decoration.decoratorDescr.dependencyClass;
         return (...args)=> {
             this.log.debug`spawning worker for ${source}`;

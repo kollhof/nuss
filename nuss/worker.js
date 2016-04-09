@@ -48,11 +48,11 @@ export function workerContext(proto, name, descr) {
 }
 
 
-export function spawnWorker(wokerClassOrProto, name, descr) {
+export function worker(wokerClassOrProto, name, descr) {
     if (name === undefined && descr === undefined) {
-        return dependencyDecorator(spawnWorker, {
+        return dependencyDecorator(worker, {
             dependencyClass: wokerClassOrProto
         });
     }
-    return spawnWorker(AutoWorker)(wokerClassOrProto, name, descr);
+    return worker(AutoWorker)(wokerClassOrProto, name, descr);
 }

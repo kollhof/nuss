@@ -1,6 +1,6 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
-import {spawnWorker, workerContext} from './worker';
+import {worker, workerContext} from './worker';
 import {logger} from './logging';
 import {config} from './config';
 
@@ -138,7 +138,7 @@ class Consumer {
     @asyncSQS
     sqs
 
-    @spawnWorker(MessageWorker)
+    @worker(MessageWorker)
     processMessage
 
     @logger
@@ -196,7 +196,9 @@ class Consumer {
             try {
                 messages = await this.fetchMessages();
             } catch (err) {
-                log.error`error fetching messages: ${err} `;
+                if (! this.stopped) {
+                    log.error`error fetching messages: ${err} `;
+                }
                 continue;
             }
 

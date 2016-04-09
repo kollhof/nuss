@@ -8,12 +8,12 @@ export function callable(proto, name, descr) {
     SPECIALS.set(proto, {func: descr.value});
 }
 
-export function value(proto, name, descr) {
-    SPECIALS.set(proto, {val: descr.value || descr.get});
+export function factory(proto, name, descr) {
+    SPECIALS.set(proto, {fac: descr.value || descr.get});
 }
 
 export function isCallable(cls) {
-    return SPECIALS.has(cls.prototype);
+    return SPECIALS.get(cls.prototype).func;
 }
 
 export function create(cls, args=[], ctx) {
@@ -29,12 +29,12 @@ export function create(cls, args=[], ctx) {
     Class.prototype.constructor = cls;
     let obj = new Class();
 
-    let {func, val} = SPECIALS.get(cls.prototype);
+    let {func, fac} = SPECIALS.get(cls.prototype);
 
     if (func !== undefined) {
         obj = func.bind(obj);
-    } else if (val !== undefined) {
-        obj = val.call(obj); /* eslint prefer-reflect: 0 */
+    } else if (fac !== undefined) {
+        obj = fac.call(obj); /* eslint prefer-reflect: 0 */
     }
     return obj;
 }

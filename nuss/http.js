@@ -1,31 +1,35 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
-import {callable} from './ioc/create';
-import {spawnWorker, workerContext} from './worker';
+import {callable, factory} from './ioc/create';
+import {worker, workerContext} from './worker';
 import {logger} from './logging';
 import {config} from './config';
+
+import {createServer} from 'http';
 
 import express, {Router} from 'express';
 
 
-export const GET='get';
+export const GET = 'get';
+export const INTERNAL_SERVER_ERROR = 500;
 
+// TODO: should this map come from the container?
+export const SERVERS = new Map();
 
 export class HttpServer {
     @logger
     log
 
-    @config('rootUrl', 'The base URL for all routes.')
-    rootUrl
+    @config('The base URL for all routes.')
+    rootUrl='/'
 
-    @config('port', 'The port to listen on.')
-    port
+    @config('The port to listen on.')
+    port=8080
 
     constructor() {
         this.started = null;
         this.stopped = null;
         this.server = null;
         this.router = new Router();
-        this.app = express();
         this.connections = new Set();
     }
 
@@ -57,17 +61,22 @@ export class HttpServer {
     }
 
     async startServer() {
-        let {log, port, rootUrl, app, connections} = this;
+        let {log, port, rootUrl, connections} = this;
 
         log.debug`starting server`;
 
+        let app = express();
         app.use(rootUrl, this.router);
+
         await new Promise((resolve)=> {
-            this.server = app.listen(port, resolve);
+            this.server = createServer(app);
+
             this.server.on('connection', (conn)=> {
                 connections.add(conn);
                 conn.on('close', ()=> connections.delete(conn));
             });
+
+            this.server.listen(this.port, resolve);
         });
 
         log.debug`server listening at 'localhost:${port}${rootUrl}'`;
@@ -76,10 +85,13 @@ export class HttpServer {
     async stopServer() {
         let {log} = this;
 
+        SERVERS.delete(this.port);
+
         log.debug`stopping server`;
 
         await new Promise((resolve)=> {
             this.server.close(resolve);
+
             for (let conn of this.connections) {
                 conn.setTimeout(10, ()=> {
                     log.error`destryoing connection`;
@@ -89,19 +101,32 @@ export class HttpServer {
         });
         log.debug`stopped server`;
     }
+
+    @factory
+    getSharedServer() {
+        let {port} = this;
+
+        let server = SERVERS.get(port);
+
+        if (server === undefined) {
+            SERVERS.set(port, this);
+            return this;
+        }
+        return server;
+    }
 }
 
-const SHARED_BY_PROCESS = Symbol('shared-by-process');
-
-export function httpServer(...args) {
+export function httpServer(proto, name, descr) {
     return dependencyDecorator(httpServer, {
         dependencyClass: HttpServer,
-        constructorArgs: [],
-        sharingKey: ()=> SHARED_BY_PROCESS
-    })(...args);
+        config: {
+            key: 'http',
+            path: '/',
+            description: 'HTTP-server config for @http()'
+        }
+    })(proto, name, descr);
 }
 
-const INTERNAL_SERVER_ERROR = 500;
 
 export class RequestWorker {
     @logger
@@ -136,10 +161,13 @@ export class RequestWorker {
 }
 
 export class HttpRoute {
+    @logger
+    log
+
     @httpServer
     server
 
-    @spawnWorker(RequestWorker)
+    @worker(RequestWorker)
     handleRequest
 
     constructor(route) {
@@ -162,7 +190,7 @@ export function http(route) {
         constructorArgs: [route],
         config: {
             key: 'http',
-            description: 'Configuration for the HTTP-server'
+            path: '/'
         }
     });
 }

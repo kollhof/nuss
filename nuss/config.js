@@ -1,32 +1,31 @@
-import {value} from './ioc/create';
+import {factory} from './ioc/create';
 import {getContexts} from './ioc/context';
 import {decorations, dependencyDecorator} from './ioc/decorators';
-import {array} from './iter';
+import {array, last} from './iter';
 import {DefaultMap} from './default-maps';
 
 
 export function getConfigPath(decoration) {
     let {decorator, decoratorDescr} = decoration;
-    let conf = decoratorDescr.config;
+    let conf = decoratorDescr.config || {path: []};
 
-    if (conf === undefined) {
-        return [{key: decorator.name, optional: true}];
-    }
-
-    let {key, path, description} = conf;
+    let {key, path, description, value} = conf;
     if (path === undefined) {
         path = [];
     } else if (path[0] === '/') {
-        path = [
-            {key: decorator.name, optional: true, root: true}
-        ];
+        return [{
+            key: key || decorator.name,
+            optional: false,
+            root: true,
+            description
+        }];
     } else {
         path = [{key: decorator.name, optional: true}]
-                .concat(path);
+            .concat(path);
     }
 
     if (key !== undefined) {
-        path.push({key, description, optional: false});
+        path.push({key, description, optional: false, value});
     }
     return path;
 }
@@ -44,7 +43,6 @@ function* getConfigPaths(cls, parents=[]) {
                 yield * getConfigPaths(dependencyClass, decPath);
             }
         }
-
     }
 }
 
@@ -54,11 +52,11 @@ function mul(len, char=' ') {
 
 
 function mergePath(path, tree) {
-    for (let {key, parents, description, foo} of path) {
+    for (let {key, parents, description, overrides, value} of path) {
         let subTree = tree.get(key);
 
-        if (foo !== undefined) {
-            subTree.overrides.add(foo);
+        if (overrides !== undefined) {
+            subTree.overrides.add(overrides);
         }
 
         if (description !== undefined) {
@@ -69,6 +67,8 @@ function mergePath(path, tree) {
             subTree.parents.add(parents.join(':'));
         }
 
+        subTree.value = value;
+
         tree = subTree.children;
     }
 }
@@ -78,26 +78,20 @@ function buildTree(confPath, tree) {
     let isRoot = false;
     let path = [];
 
-    for (let {key, description, optional, root} of confPath) {
+    for (let {key, description, optional, root, value} of confPath) {
         isRoot = isRoot || root;
 
         if (optional) {
             parents.push(key);
         } else {
             if (isRoot) {
-                (path[path.length-1]|| {}).foo = key;
+                (last(path) || {}).overrides = key;
                 mergePath(path, tree);
                 path = [];
                 isRoot = false;
             }
 
-            let item = {
-                key,
-                parents,
-                description
-            };
-
-            path.push(item);
+            path.push({key, parents, description, value});
             parents = [];
         }
     }
@@ -107,7 +101,8 @@ function buildTree(confPath, tree) {
 
 
 function printTree(map, indent=0) {
-    for (let [key, {descriptions, parents, children, overrides}] of map) {
+    for (let [key, item] of map) {
+        let {descriptions, parents, children, overrides, value} = item;
 
         if (descriptions.size > 0) {
             console.log('');
@@ -116,12 +111,15 @@ function printTree(map, indent=0) {
             console.log(`${mul(indent)}# ${descr}`);
         }
 
-        let nest = '';
-        if (parents.size > 0) {
-            nest = ` # nestable under: ${array(parents).join(':, ')}:`;
+        if (value === undefined) {
+            let nest = '';
+            if (parents.size > 0) {
+                nest = ` # nestable under: ${array(parents).join(':, ')}:`;
+            }
+            console.log(`${mul(indent)}${key}: ${nest}`);
+        } else {
+            console.log(`${mul(indent)}${key}: ${value}`);
         }
-
-        console.log(`${mul(indent)}${key}:${nest}`);
 
         printTree(children, indent + 4);
 
@@ -225,7 +223,7 @@ class ConfigProvider {
     @configData
     data
 
-    @value
+    @factory
     get value() {
         let {data} = this;
 
@@ -238,9 +236,23 @@ class ConfigProvider {
 }
 
 export function config(key, description) {
-    return dependencyDecorator(config, {
-        dependencyClass: ConfigProvider,
-        constructorArgs: [],
-        config: {key, description}
-    });
+    return (proto, name, descr)=> {
+
+        if (description === undefined) {
+            description = key;
+            key = name;
+        }
+        let configDescr = {key, description};
+
+        let {initializer} = descr;
+        if (initializer) {
+            configDescr.value = initializer.call(config);
+        }
+
+        return dependencyDecorator(config, {
+            dependencyClass: ConfigProvider,
+            constructorArgs: [],
+            config: configDescr
+        })(proto, name, descr);
+    };
 }

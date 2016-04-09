@@ -1,10 +1,10 @@
 import {methodDecorator} from './ioc/decorators';
-import {spawnWorker} from './worker';
+import {worker} from './worker';
 import {logger} from './logging';
 
 
 export class Timer {
-    @spawnWorker
+    @worker
     handleTick
 
     @logger
