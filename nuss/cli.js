@@ -10,27 +10,84 @@ import {logger} from './logging';
 import {printConfig, flattenConfigData} from './config';
 import {Container} from './container';
 import {fileSystem} from './filesystem';
-import {create} from './ioc/create';
+import {create, factory} from './ioc/create';
 import {provide} from './ioc/resolve';
-import {configData} from './config';
+import {configData, CONFIG_SCHEMA} from './config';
+import {dependencyDecorator} from './ioc/decorators';
+
 
 const EXIT_NO_ERROR = 0;
 const EXIT_ERROR = 1;
 
+let parser = new ArgumentParser({
+    version: '0.0.1',
+    addHelp: true,
+    description: 'foo runner'
+});
+
+parser.addArgument(
+    ['--generate-config'], {
+        help: 'Generate a config file for a service',
+        action: 'storeTrue'
+    }
+);
+
+parser.addArgument(
+    ['--config'], {
+        help: 'importable configuration module (.json file or .js module)',
+        required: false
+    }
+);
+
+parser.addArgument(
+    ['--service'], {
+        help: 'importable module and class e.g. example/service:Foobar',
+        required: true
+    }
+);
+
+parser.addArgument(
+    ['--require'], {
+        help: 'Extra require e.g. babel-register'
+    }
+);
+
+
+class ArgParser {
+    constructor(parser) {
+        this.parser = parser;
+    }
+
+    @factory
+    parseArgs() {
+        return this.parser.parseArgs();
+    }
+}
+
+export function cmdArgs(parser) {
+    return dependencyDecorator(cmdArgs, {
+        dependencyClass: ArgParser,
+        constructorArgs: [parser]
+    });
+}
+
 
 export class Nuss {
-    @logger
-    log
+    @cmdArgs(parser)
+    args
 
     @fileSystem
     fs
+
+    @logger
+    log
 
     constructor(process) {
         this.process = process;
     }
 
-    async main(args) {
-        let {log, fs} = this;
+    async main() {
+        let {args} = this;
 
         this.registerProcessEvents();
 
@@ -39,25 +96,13 @@ export class Nuss {
             require(args.require);
         }
 
-        let configFile = path.resolve(args.config);
-        let [modFile, clsName] = args.service.split(':');
-        modFile = path.resolve(modFile);
-
-        log.debug`loading service module ${modFile}`;
-        let mod = require(modFile);
-        let cls = mod[clsName];
+        let cls = this.getServiceClass();
 
         if (args.generate_config) {
             printConfig(cls);
             return;
         }
 
-        log.debug`loading config ${configFile}`;
-        let configSrc = await fs.readFile(configFile);
-        let configRaw = yaml.safeLoad(configSrc);
-
-        log.debug`parsing config`;
-        this.config = flattenConfigData(cls, configRaw);
         //TODO: use decorator
         let runner = create(Container, [cls], {target: this});
         this.runner = runner;
@@ -89,9 +134,43 @@ export class Nuss {
         process.exit(EXIT_ERROR);
     }
 
+    loadConfigData() {
+        let configFile = this.args.config;
+        if (configFile === null) {
+            return;
+        }
+
+        configFile = path.resolve(configFile);
+
+        let configSrc = this.fs.readFileSync(configFile);
+        return yaml.safeLoad(configSrc, {schema: CONFIG_SCHEMA});
+    }
+
+    getServiceClass() {
+        let [modFile, clsName] = this.args.service.split(':');
+        modFile = path.resolve(modFile);
+        let mod = require(modFile);
+        return mod[clsName];
+    }
+
     @provide(configData)
     getConfigData() {
-        return this.config;
+        let {config} = this;
+
+        if (config !== undefined) {
+            return config;
+        }
+        let data = this.loadConfigData();
+
+        if (data === undefined) {
+            config = {};
+        } else {
+            let cls = this.getServiceClass();
+            config = flattenConfigData(cls, data);
+        }
+
+        this.config = config;
+        return config;
     }
 
     async stop(signal) {
@@ -109,49 +188,13 @@ export class Nuss {
             }
         }
     }
-
 }
 
 
 export function main() {
-    let parser = new ArgumentParser({
-        version: '0.0.1',
-        addHelp: true,
-        description: 'foo runner'
-    });
-
-    parser.addArgument(
-        ['--generate-config'], {
-            help: 'Generate a config file for a service',
-            action: 'storeTrue'
-        }
-    );
-
-    parser.addArgument(
-        ['--config'], {
-            help: 'importable configuration module (.json file or .js module)',
-            required: false
-        }
-    );
-
-    parser.addArgument(
-        ['--service'], {
-            help: 'importable module and class e.g. example/service:Foobar',
-            required: true
-        }
-    );
-
-    parser.addArgument(
-        ['--require'], {
-            help: 'Extra require e.g. babel-register'
-        }
-    );
-
-    let args = parser.parseArgs();
-
     /* global process: true */
     let app = new Nuss(process);
-    app.main(args);
+    app.main();
 }
 
 /* global module: true */

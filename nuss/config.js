@@ -1,3 +1,7 @@
+import vm from 'vm';
+
+import yaml from 'js-yaml';
+
 import {factory} from './ioc/create';
 import {getContexts} from './ioc/context';
 import {decorations, dependencyDecorator} from './ioc/decorators';
@@ -5,11 +9,39 @@ import {array, last} from './iter';
 import {DefaultMap} from './default-maps';
 
 
+export class Script {
+    constructor(source) {
+        this.source = source;
+        this.script = new vm.Script(source);
+    }
+
+    run(ctx) {
+        return this.script.runInContext(ctx);
+    }
+}
+
+let ScriptYamlType = new yaml.Type('!es', {
+    kind: 'scalar',
+    instanceOf: Script,
+
+    construct(data) {
+        return new Script(data);
+    },
+
+    represent(script) {
+        return `${script.source}`;
+    }
+});
+
+export const CONFIG_SCHEMA = yaml.Schema.create([ScriptYamlType]);
+
+
 export function getConfigPath(decoration) {
     let {decorator, decoratorDescr} = decoration;
     let conf = decoratorDescr.config || {path: []};
 
-    let {key, path, description, value} = conf;
+    let {key, path, description, value, optional} = conf;
+
     if (path === undefined) {
         path = [];
     } else if (path[0] === '/') {
@@ -20,7 +52,10 @@ export function getConfigPath(decoration) {
             description
         }];
     } else {
-        path = [{key: decorator.name, optional: true}]
+        if (optional === undefined) {
+            optional = true;
+        }
+        path = [{key: decorator.name, optional}]
             .concat(path);
     }
 
@@ -48,6 +83,14 @@ function* getConfigPaths(cls, parents=[]) {
 
 function mul(len, char=' ') {
     return (new Array(len + 1)).join(char);
+}
+
+function indenter(indent) {
+    let ind = (parts, ...args)=> {
+        return `${mul( indent)}${String.raw({raw: parts}, ...args)}`;
+    };
+    ind.next = indenter.bind(undefined, indent + 4);
+    return ind;
 }
 
 
@@ -100,34 +143,46 @@ function buildTree(confPath, tree) {
 }
 
 
-function printTree(map, indent=0) {
+function printTree(map, out, indent=indenter(0)) {
     for (let [key, item] of map) {
         let {descriptions, parents, children, overrides, value} = item;
 
         if (descriptions.size > 0) {
-            console.log('');
+            out.write('\n');
         }
         for (let descr of descriptions) {
-            console.log(`${mul(indent)}# ${descr}`);
+            out.write(indent`# ${descr}\n`);
         }
 
         if (value === undefined) {
             let nest = '';
             if (parents.size > 0) {
-                nest = ` # nestable under: ${array(parents).join(':, ')}:`;
+                nest = `# nestable under: ${array(parents).join(':, ')}:`;
             }
-            console.log(`${mul(indent)}${key}: ${nest}`);
+            out.write(indent`${key}: ${nest}\n`);
         } else {
-            console.log(`${mul(indent)}${key}: ${value}`);
+            let lines = yaml
+                .safeDump({[key]: value}, {indent: 4, schema: CONFIG_SCHEMA})
+                .split('\n');
+
+            //TODO: hack for !<!es>
+            lines = lines
+                .map((str)=> str.replace('!<!es> |-', '!es |'))
+                .map((str)=> str.replace('!<!es>', '!es'))
+                .map((str)=> indent`${str}`)
+                .join('\n');
+
+            out.write(`${lines}\n`);
         }
 
-        printTree(children, indent + 4);
+        printTree(children, out, indent.next());
 
         if (overrides.size) {
-            console.log(`\n${mul(indent + 4)}# may contain: ` +
-                        `${array(overrides).join(':,')}:`);
+            out.write('\n');
+            out.write(
+                indent.next()`# may contain: ${array(overrides).join(':,')}:\n`
+            );
         }
-
     }
 }
 
@@ -147,7 +202,7 @@ export function printConfig(cls) {
         buildTree(path, tree);
     }
 
-    printTree(tree);
+    printTree(tree, process.stdout);
 }
 
 export function flattenConfigData(cls, data) {
@@ -231,7 +286,16 @@ class ConfigProvider {
             .map(({key})=> key)
             .join(':');
 
-        return data[expandedKey];
+        let val = data[expandedKey];
+
+        //TODO: check if key exists
+        //TODO: do we really want to support defaults?
+
+        // if (val === undefined) {
+        //     let {decoration} = getContext(this);
+        //     val = decoration.decoratorDescr.config.value;
+        // }
+        return val;
     }
 }
 
@@ -246,7 +310,7 @@ export function config(key, description) {
 
         let {initializer} = descr;
         if (initializer) {
-            configDescr.value = initializer.call(config);
+            configDescr.value = initializer.call(configDescr);
         }
 
         return dependencyDecorator(config, {

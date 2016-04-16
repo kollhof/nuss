@@ -47,7 +47,6 @@ example-config:
 	NODE_PATH=. node -r babel-register \
 		nuss/cli.js \
 			--generate-config \
-			--config ./config/config.yaml \
 			--service examples/service:Foobar
 
 docker-example: build

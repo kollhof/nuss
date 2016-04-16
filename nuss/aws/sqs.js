@@ -34,6 +34,10 @@ class AsyncSQS {
         return this._perform('createQueue', args);
     }
 
+    getQueueUrl(...args) {
+        return this._perform('getQueueUrl', args);
+    }
+
     sendMessage(...args) {
         return this._perform('sendMessage', args);
     }

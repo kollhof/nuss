@@ -5,13 +5,13 @@ import {dependencyDecorator} from './ioc/decorators';
 
 
 function wrap(proto, name, descr) {
-    descr.value = (...args)=> {
+    descr.value = function(...args) {
         return new Promise((resolve, reject)=> {
-            fs[name](...args, (err, data)=> {
+            this.wrapped[name](...args, (err, result)=> {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve(data);
+                    resolve(result);
                 }
             });
         });
@@ -21,9 +21,13 @@ function wrap(proto, name, descr) {
 
 
 export class FileSystem {
-    @wrap
-    readFile () {
+    wrapped=fs
 
+    @wrap
+    readFile() { }
+
+    readFileSync(...args) {
+        return this.wrapped.readFileSync(...args);
     }
 
 }

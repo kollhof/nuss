@@ -1,8 +1,11 @@
 import {inspect} from 'util';
+import vm from 'vm';
+
 import {hrtime} from './profiling';
-import {config} from './config';
+import {config, Script} from './config';
 import {getContextDescr, getContexts, getContext} from './ioc/context';
 import {dependencyDecorator} from './ioc/decorators';
+import {factory, callable} from './ioc/create';
 
 
 export const RESET = '\x1b[0m';
@@ -140,10 +143,108 @@ function formatItem(obj) {
     return inspect(obj, {colors: true, depth: 0});
 }
 
+export class Formatter {
+    @config('format', 'message format')
+    formatScript=new Script('`${shortColoredLevel}:${context}: ${message}`')
+
+    @callable
+    doFormat(level, target, parts, args) {
+        if (this.formatScript === undefined) {
+            // TODO:
+            return;
+        }
+
+        let formatCtx = vm.createContext({
+            level,
+
+            get context() {
+                return nameContext(target);
+            },
+
+            get shortColoredLevel() {
+                let levelName = LEVEL_NAMES[level];
+                let clr = COLOR_MAP[levelName] || RESET;
+                return `${clr}${levelName[0]}${RESET}`;
+            },
+
+            get message() {
+                return String.raw({raw: parts}, ...(args.map(formatItem)));
+            }
+        });
+
+        //TODO: is running script in context better than
+        //running the script to return a function once and then call that
+        //function?
+        return this.formatScript.run(formatCtx);
+    }
+}
+
+
+export function formatter(proto, name, descr) {
+    return dependencyDecorator(formatter, {
+        dependencyClass: Formatter,
+        constructorArgs: [],
+        config: {
+            key: 'formatter',
+            description: 'Custom Formatter'
+        }
+    })(proto, name, descr);
+}
+
+
+export class StreamHandler {
+    constructor(format, stream) {
+        this.format = format;
+        this.stream = stream;
+
+        //TODO: resolve stream param
+        /* global process: true */
+        this.stream = process.stdout;
+    }
+
+    handle(level, target, parts, args) {
+        let entry = this.format(level, target, parts, args);
+        if (entry !== undefined) {
+            this.stream.write(`${entry}\n`);
+        }
+    }
+}
+
+
+export class Handler {
+    @config('class', 'handler class')
+    cls='nuss/logging/StreamHandler'
+
+    @config('arguments')
+    args=['process.stdout']
+
+    @formatter
+    formatter
+
+    @factory
+    getHandler() {
+        return new StreamHandler(this.formatter, ...this.args);
+    }
+}
+
+export function handler(proto, name, descr) {
+    return dependencyDecorator(handler, {
+        dependencyClass: Handler,
+        constructorArgs: [],
+        config: {
+            key: 'handler',
+            description: 'Custom Handler'
+        }
+    })(proto, name, descr);
+}
+
 
 export class Logger extends BaseLogger {
-    @config('level', 'Log level (error, info, debug)')
-    level='error'
+    @config('Log level (error, info, debug)')
+    level='debug'
+
+    @handler
+    handler
 
     constructor() {
         super();
@@ -155,15 +256,7 @@ export class Logger extends BaseLogger {
         if (level < this.level) {
             return;
         }
-
-        let msg = String.raw({raw: parts}, ...(args.map(formatItem)));
-        let prefix = nameContext(this.target);
-
-        level = LEVEL_NAMES[level];
-        let clr = COLOR_MAP[level] || RESET;
-
-        /* global process: true */
-        process.stdout.write(`${clr}${level[0]}${RESET}:${prefix}: ${msg}\n`);
+        this.handler.handle(level, this.target, parts, args);
     }
 
     timeit() {
@@ -173,17 +266,13 @@ export class Logger extends BaseLogger {
 
 
 export function logger(proto, name, descr) {
-    // TODO:
-    //proto[name] = new BaseLogger();
-
-    descr.writable = true;
     return dependencyDecorator(logger, {
         dependencyClass: Logger,
         constructorArgs: [proto],
         config: {
-            key: 'logging',
+            key: 'logger',
             path: '/',
-            description: 'Logging configuration'
+            description: 'Logger configuration'
         }
     })(proto, name, descr);
 }

@@ -19,7 +19,7 @@ async function getQueueUrl(queue, sqs) {
         return data.QueueUrl;
     }
 
-    task = sqs.createQueue({QueueName: queue});
+    task = sqs.getQueueUrl({QueueName: queue});
     QUEUE_CACHE.set(queue, task);
 
     let data = await task;
@@ -29,6 +29,10 @@ async function getQueueUrl(queue, sqs) {
 
 function transferHeadersToCtx(msg, ctx) {
     let attrs = msg.MessageAttributes;
+
+    if (attrs === undefined) {
+        return;
+    }
 
     for (let key of ['foobar', 'trace']) {
         let val = attrs[key];
