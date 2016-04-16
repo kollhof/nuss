@@ -172,9 +172,9 @@ export class Formatter {
             }
         });
 
-        //TODO: is running script in context better than
-        //running the script to return a function once and then call that
-        //function?
+        // TODO: is running script in context better than
+        // running the script to return a function once and then call that
+        // function?
         return this.formatScript.run(formatCtx);
     }
 }
@@ -197,7 +197,7 @@ export class StreamHandler {
         this.format = format;
         this.stream = stream;
 
-        //TODO: resolve stream param
+        // TODO: resolve stream param
         /* global process: true */
         this.stream = process.stdout;
     }

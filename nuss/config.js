@@ -3,7 +3,7 @@ import vm from 'vm';
 import yaml from 'js-yaml';
 
 import {factory} from './ioc/create';
-import {getContexts} from './ioc/context';
+import {getContexts, getContext} from './ioc/context';
 import {decorations, dependencyDecorator} from './ioc/decorators';
 import {array, last} from './iter';
 import {DefaultMap} from './default-maps';
@@ -33,7 +33,10 @@ let ScriptYamlType = new yaml.Type('!es', {
     }
 });
 
-export const CONFIG_SCHEMA = yaml.Schema.create([ScriptYamlType]);
+
+export const CONFIG_SCHEMA = yaml.Schema.create([
+    ScriptYamlType
+]);
 
 
 export function getConfigPath(decoration) {
@@ -161,6 +164,10 @@ function printTree(map, out, indent=indenter(0)) {
             }
             out.write(indent`${key}: ${nest}\n`);
         } else {
+            if (value instanceof Array) {
+
+            }
+
             let lines = yaml
                 .safeDump({[key]: value}, {indent: 4, schema: CONFIG_SCHEMA})
                 .split('\n');
@@ -195,14 +202,14 @@ function genTree() {
     };
 }
 
-export function printConfig(cls) {
+export function printConfig(cls, out) {
     let tree = new DefaultMap(genTree);
 
     for (let path of getConfigPaths(cls)) {
         buildTree(path, tree);
     }
 
-    printTree(tree, process.stdout);
+    printTree(tree, out);
 }
 
 export function flattenConfigData(cls, data) {
@@ -288,13 +295,13 @@ class ConfigProvider {
 
         let val = data[expandedKey];
 
-        //TODO: check if key exists
-        //TODO: do we really want to support defaults?
+        // TODO: check if key exists
+        // TODO: do we really want to support defaults?
 
-        // if (val === undefined) {
-        //     let {decoration} = getContext(this);
-        //     val = decoration.decoratorDescr.config.value;
-        // }
+        if (val === undefined) {
+            let {decoration} = getContext(this);
+            val = decoration.decoratorDescr.config.value;
+        }
         return val;
     }
 }

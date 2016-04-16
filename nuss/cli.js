@@ -99,11 +99,11 @@ export class Nuss {
         let cls = this.getServiceClass();
 
         if (args.generate_config) {
-            printConfig(cls);
+            printConfig(cls, process.stdout);
             return;
         }
 
-        //TODO: use decorator
+        // TODO: use decorator
         let runner = create(Container, [cls], {target: this});
         this.runner = runner;
         await runner.start();

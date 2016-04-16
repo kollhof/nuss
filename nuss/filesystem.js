@@ -3,7 +3,6 @@ import fs from 'fs';
 import {dependencyDecorator} from './ioc/decorators';
 
 
-
 function wrap(proto, name, descr) {
     descr.value = function(...args) {
         return new Promise((resolve, reject)=> {
@@ -24,7 +23,9 @@ export class FileSystem {
     wrapped=fs
 
     @wrap
-    readFile() { }
+    readFile() {
+        // wrapped
+    }
 
     readFileSync(...args) {
         return this.wrapped.readFileSync(...args);
