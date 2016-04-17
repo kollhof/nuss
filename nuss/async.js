@@ -134,11 +134,13 @@ export function wrapNodeStyle(thisObj, func) {
 
 const WRAPPED_FUNCS = new WeakSet();
 
-export function isWrapped(func){
+export function isWrapped(func) {
     return WRAPPED_FUNCS.has(func);
 }
 
 export function wrap(proto, name, descr) {
+
+    // TODO: does this conform to the spec?
     descr.value = function(...args) {
         let wrappedObj = this.wrapped;
         return wrapNodeStyle(wrappedObj, wrappedObj[name])(...args);
@@ -146,6 +148,6 @@ export function wrap(proto, name, descr) {
 
     WRAPPED_FUNCS.add(descr.value);
 
-    delete descr.initializer;
+    delete descr.initializer; /* eslint prefer-reflect: 0 */
     return descr;
 }
