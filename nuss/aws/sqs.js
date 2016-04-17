@@ -77,10 +77,10 @@ export function asyncSQS(...args) {
     return dependencyDecorator(asyncSQS, {
         dependencyClass: AsyncSQS,
         constructorArgs: [],
-        config: {
+        config: [{
+            root: true,
             key: 'aws',
-            path: '/',
             description: 'AWS configuration'
-        }
+        }]
     })(...args);
 }

@@ -4,49 +4,49 @@
 import path from 'path';
 
 import {ArgumentParser} from 'argparse';
-import yaml from 'js-yaml';
 
 import {logger} from './logging';
-import {printConfig, flattenConfigData} from './config';
+import {printConfig} from './config/generator';
+import {flattenConfigData, loadConfig} from './config/loader';
+import {configData} from './config';
 import {Container} from './container';
 import {fileSystem} from './filesystem';
 import {create, factory} from './ioc/create';
 import {provide} from './ioc/resolve';
-import {configData, CONFIG_SCHEMA} from './config';
 import {dependencyDecorator} from './ioc/decorators';
 
 
 const EXIT_NO_ERROR = 0;
 const EXIT_ERROR = 1;
 
-let parser = new ArgumentParser({
+let nussArgs = new ArgumentParser({
     version: '0.0.1',
     addHelp: true,
     description: 'foo runner'
 });
 
-parser.addArgument(
+nussArgs.addArgument(
     ['--generate-config'], {
         help: 'Generate a config file for a service',
         action: 'storeTrue'
     }
 );
 
-parser.addArgument(
+nussArgs.addArgument(
     ['--config'], {
         help: 'importable configuration module (.json file or .js module)',
         required: false
     }
 );
 
-parser.addArgument(
+nussArgs.addArgument(
     ['--service'], {
         help: 'importable module and class e.g. example/service:Foobar',
         required: true
     }
 );
 
-parser.addArgument(
+nussArgs.addArgument(
     ['--require'], {
         help: 'Extra require e.g. babel-register'
     }
@@ -73,7 +73,7 @@ export function cmdArgs(parser) {
 
 
 export class Nuss {
-    @cmdArgs(parser)
+    @cmdArgs(nussArgs)
     args
 
     @fileSystem
@@ -141,9 +141,8 @@ export class Nuss {
         }
 
         configFile = path.resolve(configFile);
-
         let configSrc = this.fs.readFileSync(configFile);
-        return yaml.safeLoad(configSrc, {schema: CONFIG_SCHEMA});
+        return loadConfig(configSrc);
     }
 
     getServiceClass() {

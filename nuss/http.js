@@ -12,8 +12,12 @@ import express, {Router} from 'express';
 export const GET = 'get';
 export const INTERNAL_SERVER_ERROR = 500;
 
+export const CONNECTION_TIMEOUT = 10;
+export const DEFAULT_PORT = 8080;
+
 // TODO: should this map come from the container?
 export const SERVERS = new Map();
+
 
 export class HttpServer {
     @logger
@@ -23,7 +27,7 @@ export class HttpServer {
     rootUrl='/'
 
     @config('The port to listen on.')
-    port=8080
+    port=DEFAULT_PORT
 
     constructor() {
         this.started = null;
@@ -38,6 +42,23 @@ export class HttpServer {
         this.router[verb](route, handler);
     }
 
+    manageConnection(conn) {
+        let {connections} = this;
+
+        connections.add(conn);
+        conn.on('close', ()=> connections.delete(conn));
+    }
+
+    closeConnections() {
+        let {log, connections} = this;
+
+        for (let conn of connections) {
+            conn.setTimeout(CONNECTION_TIMEOUT, ()=> {
+                log.error`destryoing connection`;
+                conn.destroy();
+            });
+        }
+    }
     async start() {
         if (this.started !== null) {
             this.log.debug`server already starting`;
@@ -61,21 +82,18 @@ export class HttpServer {
     }
 
     async startServer() {
-        let {log, port, rootUrl, connections} = this;
+        let {log, port, rootUrl} = this;
 
         log.debug`starting server`;
 
+        // TODO: express and createServer need to be injected
         let app = express();
         app.use(rootUrl, this.router);
 
+        this.server = createServer(app);
+        this.server.on('connection', (conn)=> this.manageConnection(conn));
+
         await new Promise((resolve)=> {
-            this.server = createServer(app);
-
-            this.server.on('connection', (conn)=> {
-                connections.add(conn);
-                conn.on('close', ()=> connections.delete(conn));
-            });
-
             this.server.listen(this.port, resolve);
         });
 
@@ -91,13 +109,7 @@ export class HttpServer {
 
         await new Promise((resolve)=> {
             this.server.close(resolve);
-
-            for (let conn of this.connections) {
-                conn.setTimeout(10, ()=> {
-                    log.error`destryoing connection`;
-                    conn.destroy();
-                });
-            }
+            this.closeConnections();
         });
         log.debug`stopped server`;
     }
@@ -119,11 +131,11 @@ export class HttpServer {
 export function httpServer(proto, name, descr) {
     return dependencyDecorator(httpServer, {
         dependencyClass: HttpServer,
-        config: {
+        config: [{
+            root: true,
             key: 'http',
-            path: '/',
             description: 'HTTP-server config for @http()'
-        }
+        }]
     })(proto, name, descr);
 }
 
@@ -187,11 +199,7 @@ export class HttpRoute {
 export function http(route) {
     return methodDecorator(http, {
         dependencyClass: HttpRoute,
-        constructorArgs: [route],
-        config: {
-            key: 'http',
-            path: '/'
-        }
+        constructorArgs: [route]
     });
 }
 

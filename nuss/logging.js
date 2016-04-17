@@ -2,7 +2,8 @@ import {inspect} from 'util';
 import vm from 'vm';
 
 import {hrtime} from './profiling';
-import {config, Script} from './config';
+import {config} from './config';
+import {Script} from './config/loader';
 import {getContextDescr, getContexts, getContext} from './ioc/context';
 import {dependencyDecorator} from './ioc/decorators';
 import {factory, callable} from './ioc/create';
@@ -184,10 +185,10 @@ export function formatter(proto, name, descr) {
     return dependencyDecorator(formatter, {
         dependencyClass: Formatter,
         constructorArgs: [],
-        config: {
+        config: [{
             key: 'formatter',
             description: 'Custom Formatter'
-        }
+        }]
     })(proto, name, descr);
 }
 
@@ -231,10 +232,10 @@ export function handler(proto, name, descr) {
     return dependencyDecorator(handler, {
         dependencyClass: Handler,
         constructorArgs: [],
-        config: {
+        config: [{
             key: 'handler',
             description: 'Custom Handler'
-        }
+        }]
     })(proto, name, descr);
 }
 
@@ -269,10 +270,10 @@ export function logger(proto, name, descr) {
     return dependencyDecorator(logger, {
         dependencyClass: Logger,
         constructorArgs: [proto],
-        config: {
+        config: [{
+            root: true,
             key: 'logger',
-            path: '/',
             description: 'Logger configuration'
-        }
+        }]
     })(proto, name, descr);
 }

@@ -93,11 +93,11 @@ export function publisher(queue) {
     return dependencyDecorator(publisher, {
         dependencyClass: Publisher,
         constructorArgs: [queue],
-        config: {
-            description: `Queue for @publisher('${queue}')`,
-            key: queue,
-            path: [{key: 'queues', description: 'SQS configuration'}]
-        }
+        config: [
+            {key: 'publisher', optional: true},
+            {key: 'queues', description: 'SQS configuration'},
+            {key: queue, description: `Queue for @publisher('${queue}')`}
+        ]
     });
 }
 
@@ -177,16 +177,23 @@ class Consumer {
 
         log.debug`fetching messages from ${this.queue}`;
 
-        let data = await this.sqs.receiveMessage({
-            QueueUrl: queueUrl,
-            WaitTimeSeconds: 10,
-            MaxNumberOfMessages: 10,
-            MessageAttributeNames: [
-                'foobar', 'trace'
-            ]
-        });
+        try {
+            let data = await this.sqs.receiveMessage({
+                QueueUrl: queueUrl,
+                WaitTimeSeconds: 10,
+                MaxNumberOfMessages: 10,
+                MessageAttributeNames: [
+                    'foobar', 'trace'
+                ]
+            });
 
-        return data.Messages || [];
+            return data.Messages || [];
+        } catch (err) {
+            if (!this.stopped) {
+                log.error`error fetching messages: ${err} `;
+            }
+        }
+        return [];
     }
 
     async pollMessages() {
@@ -195,16 +202,7 @@ class Consumer {
         log.debug`start polling`;
 
         while (!this.stopped) {
-            let messages;
-
-            try {
-                messages = await this.fetchMessages();
-            } catch (err) {
-                if (! this.stopped) {
-                    log.error`error fetching messages: ${err} `;
-                }
-                continue;
-            }
+            let messages = await this.fetchMessages();
 
             log.debug`processing messages ${messages.length} from ${queue}`;
 
@@ -231,10 +229,10 @@ export function consumer(queue) {
     return methodDecorator(consumer, {
         dependencyClass: Consumer,
         constructorArgs: [queue],
-        config: {
-            path: [{key: 'queues', description: 'SQS configuration'}],
-            description: `Queue for @consumer('${queue}')`,
-            key: queue
-        }
+        config: [
+            {key: 'consumer', optional: true},
+            {key: 'queues', description: 'SQS configuration'},
+            {key: queue, description: `Queue for @consumer('${queue}')`}
+        ]
     });
 }

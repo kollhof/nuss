@@ -9,10 +9,6 @@ import {all, TaskSet} from './async';
 import {logger} from './logging';
 
 
-export function shared(proto, name, descr) {
-
-}
-
 export class Container {
     @logger
     log

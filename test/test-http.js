@@ -56,11 +56,7 @@ describe('@http()', ()=> {
             decorator: http,
             decoratorDescr: {
                 dependencyClass: HttpRoute,
-                constructorArgs: ['/foobar/spam'],
-                config: {
-                    key: 'http',
-                    path: '/'
-                }
+                constructorArgs: ['/foobar/spam']
             },
             decoratedClass: Foobar,
             decoratedMethod: Foobar.prototype.spam,

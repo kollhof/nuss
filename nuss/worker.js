@@ -51,7 +51,8 @@ export function workerContext(proto, name, descr) {
 export function worker(wokerClassOrProto, name, descr) {
     if (name === undefined && descr === undefined) {
         return dependencyDecorator(worker, {
-            dependencyClass: wokerClassOrProto
+            dependencyClass: wokerClassOrProto,
+            config: [{key: 'worker', optional: true}]
         });
     }
     return worker(AutoWorker)(wokerClassOrProto, name, descr);
