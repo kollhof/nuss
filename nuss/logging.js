@@ -1,10 +1,11 @@
 import {inspect} from 'util';
 import vm from 'vm';
 
+import {array} from './iter';
 import {hrtime} from './profiling';
 import {config} from './config';
 import {Script} from './config/loader';
-import {getContextDescr, getContexts, getContext} from './ioc/context';
+import {getContexts, getContext} from './ioc/context';
 import {dependencyDecorator} from './ioc/decorators';
 import {factory, callable} from './ioc/create';
 
@@ -106,20 +107,43 @@ function nameSingleCtx(ctx, cls, nme, dec, id) { /* eslint max-params: 0 */
     return `${clr}${ctx}${RESET}`;
 }
 
+function getContextDescr(ctx) {
+    let {decoration, target} = ctx;
+
+    if (decoration !== undefined) {
+        let {decorator, decoratedClass, decoratedName} = decoration;
+
+        return {
+            ctx: target.constructor.name,
+            cls: decoratedClass.name,
+            nme: decoratedName,
+            dec: decorator.name,
+            id: target.id
+        };
+    }
+
+    return {
+        ctx: target.constructor.name,
+        id: target.id
+    };
+}
+
 function nameContext(target) {
     let ctxs = getContexts(target);
-    let {wrk, names, name} = Array
-        .from(ctxs)
+
+    let {wrk, names, name} = array(ctxs)
         .map(getContextDescr)
         .reduce((rslt, {ctx, cls, nme, dec, id})=> {
+            let formattedName = nameSingleCtx(ctx, cls, nme, dec, id);
+
             if (id === undefined) {
                 if (cls === undefined) {
-                    rslt.name = nameSingleCtx(ctx, cls, nme, dec, id);
+                    rslt.name = formattedName;
                 } else {
-                    rslt.names.unshift(nameSingleCtx(ctx, cls, nme, dec, id));
+                    rslt.names.unshift(formattedName);
                 }
             } else {
-                rslt.wrk = nameSingleCtx(ctx, cls, nme, dec, id);
+                rslt.wrk = formattedName;
             }
 
             return rslt;
@@ -149,7 +173,7 @@ export class Formatter {
     formatScript=new Script('`${shortColoredLevel}:${context}: ${message}`')
 
     @callable
-    doFormat(level, target, parts, args) {
+    format(level, target, parts, args) {
         if (this.formatScript === undefined) {
             // TODO:
             return;

@@ -46,12 +46,6 @@ nussArgs.addArgument(
     }
 );
 
-nussArgs.addArgument(
-    ['--require'], {
-        help: 'Extra require e.g. babel-register'
-    }
-);
-
 
 class ArgParser {
     constructor(parser) {
@@ -90,11 +84,6 @@ export class Nuss {
         let {args} = this;
 
         this.registerProcessEvents();
-
-        if (args.require) {
-            /* global require: true */
-            require(args.require);
-        }
 
         let cls = this.getServiceClass();
 
@@ -148,6 +137,8 @@ export class Nuss {
     getServiceClass() {
         let [modFile, clsName] = this.args.service.split(':');
         modFile = path.resolve(modFile);
+
+        /* global require: true */
         let mod = require(modFile);
         return mod[clsName];
     }
