@@ -12,11 +12,17 @@ export function factory(proto, name, descr) {
     SPECIALS.set(proto, {fac: descr.value || descr.get});
 }
 
+
 export function isCallable(cls) {
-    return SPECIALS.get(cls.prototype).func;
+    return SPECIALS.get(cls.prototype).func !== undefined;
 }
 
-export function create(cls, args=[], ctx) {
+export function isFactory(cls) {
+    return SPECIALS.get(cls.prototype).fac !== undefined;
+}
+
+
+export function createInstance(cls, args, ctx) {
     let Class = class extends cls {
         constructor() {
             super(...args);
@@ -27,14 +33,20 @@ export function create(cls, args=[], ctx) {
 
     // TODO: overwrite or not?
     Class.prototype.constructor = cls;
-    let obj = new Class();
+    return new Class();
+}
+
+export function create(cls, args=[], ctx) {
+    let obj = createInstance(cls, args, ctx);
 
     let {func, fac} = SPECIALS.get(cls.prototype);
 
     if (func !== undefined) {
-        obj = func.bind(obj);
+        return func.bind(obj);
     } else if (fac !== undefined) {
-        obj = fac.call(obj); /* eslint prefer-reflect: 0 */
+        return fac.call(obj); /* eslint prefer-reflect: 0 */
     }
+
     return obj;
 }
+

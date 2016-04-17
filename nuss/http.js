@@ -20,6 +20,8 @@ export const SERVERS = new Map();
 
 
 export class HttpServer {
+    servers=SERVERS
+
     @logger
     log
 
@@ -101,9 +103,9 @@ export class HttpServer {
     }
 
     async stopServer() {
-        let {log} = this;
+        let {log, servers} = this;
 
-        SERVERS.delete(this.port);
+        servers.delete(this.port);
 
         log.debug`stopping server`;
 
@@ -116,12 +118,12 @@ export class HttpServer {
 
     @factory
     getSharedServer() {
-        let {port} = this;
+        let {port, servers} = this;
 
-        let server = SERVERS.get(port);
+        let server = servers.get(port);
 
         if (server === undefined) {
-            SERVERS.set(port, this);
+            servers.set(port, this);
             return this;
         }
         return server;
@@ -157,15 +159,16 @@ export class RequestWorker {
         let {log, workerCtx, req, resp} = this;
 
         log.debug`applying request headers to worker context`;
-        workerCtx.setHeader('foobar', req.headers.foobar);
         workerCtx.setHeader('trace', req.headers.trace);
 
         try {
             await handler(req, resp);
         } catch (err) {
             log.error`${err} handling request`;
-            resp.status(INTERNAL_SERVER_ERROR)
-                .send(err.stack);
+            resp.status(INTERNAL_SERVER_ERROR);
+
+            // TODO: security risk!
+            resp.send(err.stack);
         }
 
         log.debug`http request handled`;
