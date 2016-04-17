@@ -20,7 +20,17 @@ export const SERVERS = new Map();
 
 
 export class HttpServer {
+    // TODO: should be an injected shared Map provided by the container
+    // this would allow the container to delete the object when it dies
+    // instead of using a module local object that may never get cleaned up
     servers=SERVERS
+
+    // TODO: should probably wrap node's server to make it injectable
+    // and help with testing
+    createServer=createServer
+
+    // TODO: wrap make injectable
+    express=express
 
     @logger
     log
@@ -61,6 +71,7 @@ export class HttpServer {
             });
         }
     }
+
     async start() {
         if (this.started !== null) {
             this.log.debug`server already starting`;
@@ -88,11 +99,11 @@ export class HttpServer {
 
         log.debug`starting server`;
 
-        // TODO: express and createServer need to be injected
-        let app = express();
+        // TODO: express and createServer need to be injected properly
+        let app = this.express();
         app.use(rootUrl, this.router);
 
-        this.server = createServer(app);
+        this.server = this.createServer(app);
         this.server.on('connection', (conn)=> this.manageConnection(conn));
 
         await new Promise((resolve)=> {
