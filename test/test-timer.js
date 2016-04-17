@@ -15,12 +15,17 @@ describe('Timer()', ()=> {
 
         await tmr.start();
         await sleep(SLEEP_TIME);
-        expect(tmr.handleTick).to.have.been.called;
+        expect(tmr.handleTick)
+            .to.have.been
+            .calledWithExactly();
+
         tmr.handleTick.reset();
 
         await tmr.stop();
         await sleep(SLEEP_TIME);
-        expect(tmr.handleTick).to.have.not.been.called;
+        expect(tmr.handleTick)
+            .to.have
+            .callCount(0);
     });
 });
 

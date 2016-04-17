@@ -1,8 +1,7 @@
-import {describe, it, expect} from './testing';
+import {describe, it, expect, match} from './testing';
 import {createMocked} from 'nuss/testing';
 import {HttpRoute, http, GET} from 'nuss/http';
 import {getDecoratedMethods} from 'nuss/ioc/decorators';
-import {match} from 'sinon';
 
 
 describe('HttpRoute()', ()=> {
@@ -13,16 +12,23 @@ describe('HttpRoute()', ()=> {
 
         expect(server.addRoute)
             .to.have.been
-            .calledWithMatch(GET, '/foobar/spam', match.instanceOf(Function))
-            .once;
+            .calledOnce
+            .calledWithMatch(GET, '/foobar/spam', match.instanceOf(Function));
+
     });
 
     it('should start and stop server', ()=> {
         httpRoute.start();
-        expect(httpRoute.server.start).to.have.been.called;
+        expect(httpRoute.server.start)
+            .to.have.been
+            .calledOnce
+            .calledWithExactly();
 
         httpRoute.stop();
-        expect(httpRoute.server.stop).to.have.been.called;
+        expect(httpRoute.server.stop)
+            .to.have.been
+            .calledOnce
+            .calledWithExactly();
     });
 
     it('should spawn worker when server calls callback', ()=> {
@@ -34,8 +40,10 @@ describe('HttpRoute()', ()=> {
         handleReq(req, resp);
 
         expect(httpRoute.handleRequest)
-            .to.have.been.calledWith(req, resp)
-            .once;
+            .to.have.been
+            .calledOnce
+            .calledWithExactly(req, resp);
+
     });
 });
 

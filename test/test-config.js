@@ -1,5 +1,4 @@
-import {expect} from 'chai';
-import {it, describe} from 'mocha';
+import {describe, it} from './testing';
 
 import {config} from 'nuss/config';
 
