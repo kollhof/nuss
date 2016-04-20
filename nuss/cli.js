@@ -9,9 +9,9 @@ import {logger} from './logging';
 import {printConfig} from './config/generator';
 import {flattenConfigData, loadConfig} from './config/loader';
 import {configData} from './config';
-import {Container} from './container';
+import {container} from './container';
 import {fileSystem} from './filesystem';
-import {create, factory} from './ioc/create';
+import {factory} from './ioc/create';
 import {provide} from './ioc/resolve';
 import {dependencyDecorator} from './ioc/decorators';
 
@@ -22,7 +22,7 @@ const EXIT_ERROR = 1;
 let nussArgs = new ArgumentParser({
     version: '0.0.1',
     addHelp: true,
-    description: 'foo runner'
+    description: 'foo container'
 });
 
 nussArgs.addArgument(
@@ -76,6 +76,9 @@ export class Nuss {
     @logger
     log
 
+    @container
+    container
+
     constructor(process) {
         this.process = process;
     }
@@ -92,10 +95,7 @@ export class Nuss {
             return;
         }
 
-        // TODO: use decorator
-        let runner = create(Container, [cls], {target: this});
-        this.runner = runner;
-        await runner.start();
+        await this.container.start(cls);
     }
 
     registerProcessEvents() {
@@ -164,11 +164,11 @@ export class Nuss {
     }
 
     async stop(signal) {
-        let {log, runner, process} = this;
+        let {log, process} = this;
 
         try {
             log.debug`cought signal ${signal}, stopping application`;
-            await runner.stop();
+            await this.container.stop();
             process.exit(EXIT_NO_ERROR);
         } catch (err) {
             try {

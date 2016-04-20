@@ -1,5 +1,5 @@
 import {getImplementation, provide} from './ioc/resolve';
-import {createInstance, isCallable} from './ioc/create';
+import {createInstance, isCallable, isFactory} from './ioc/create';
 import {configData, config} from './config';
 import {flattenConfigData} from './config/loader';
 import {stub, createStubInstance} from 'sinon';

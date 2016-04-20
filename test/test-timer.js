@@ -1,4 +1,5 @@
-import {describe, it, expect, spy} from './testing';
+import {describe, it, expect} from './testing';
+import {createMocked} from 'nuss/testing';
 
 import {Timer, timer} from 'nuss/timer';
 import {sleep} from 'nuss/async';
@@ -8,10 +9,8 @@ import {getDecoratedMethods} from 'nuss/ioc/decorators';
 const SLEEP_TIME = 1;
 
 describe('Timer()', ()=> {
-    it('should start and call spawnWorker() and stop', async ()=> {
-        let tmr = new Timer(0);
-        tmr.handleTick = spy();
-        tmr.log = {debug: spy()};
+    it('should start and call handleTick() and stop', async ()=> {
+        let tmr = createMocked(Timer, [0]);
 
         await tmr.start();
         await sleep(SLEEP_TIME);

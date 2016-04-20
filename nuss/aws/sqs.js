@@ -76,7 +76,6 @@ class AsyncSQS {
 export function asyncSQS(...args) {
     return dependencyDecorator(asyncSQS, {
         dependencyClass: AsyncSQS,
-        constructorArgs: [],
         config: [{
             root: true,
             key: 'aws',

@@ -46,7 +46,6 @@ describe('@fileSystem()', ()=> {
             decorator: fileSystem,
             decoratorDescr: {
                 dependencyClass: FileSystem,
-                constructorArgs: []
             },
             decoratedClass: Foobar,
             decoratedName: 'fs'

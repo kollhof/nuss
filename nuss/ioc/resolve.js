@@ -5,10 +5,16 @@ import {getContext} from './context';
 const IMPLEMENTATION_PROVIDERS = new DefaultWeakMap(()=> new Map());
 
 
-export function createDecoratedHandler(decoration, target) {
+export function createHandler(decoration, target) {
     let {decoratedClass, decoratedMethod} = decoration;
     let obj = create(decoratedClass, [], {decoration, target});
     return decoratedMethod.bind(obj);
+}
+
+export function createImplementation(decoration, target) {
+    let {dependencyClass, constructorArgs} = decoration.decoratorDescr;
+
+    return create(dependencyClass, constructorArgs, {decoration, target});
 }
 
 
@@ -52,6 +58,7 @@ function getImplementationFromProvider(decoration, target) {
     }
 }
 
+
 export function getImplementation(decoration, target) {
     let obj = getImplementationFromProvider(decoration, target);
 
@@ -59,8 +66,6 @@ export function getImplementation(decoration, target) {
         return obj;
     }
 
-    let {dependencyClass, constructorArgs} = decoration.decoratorDescr;
-
-    return create(dependencyClass, constructorArgs, {decoration, target});
+    return createImplementation(decoration, target);
 }
 

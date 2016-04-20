@@ -20,6 +20,5 @@ export class FileSystem {
 export function fileSystem(proto, name, descr) {
     return dependencyDecorator(fileSystem, {
         dependencyClass: FileSystem,
-        constructorArgs: []
     })(proto, name, descr);
 }

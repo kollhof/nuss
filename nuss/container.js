@@ -1,51 +1,51 @@
 import {getDecoratedMethods} from './ioc/decorators';
-import {
-    getImplementation, createDecoratedHandler, provide
-} from './ioc/resolve';
-import {create} from './ioc/create';
-import {getContext} from './ioc/context';
-import {WorkerContext, worker} from './worker';
+import {getImplementation, createImplementation, provide} from './ioc/resolve';
+import {worker} from './worker';
 import {all, TaskSet} from './async';
 import {logger} from './logging';
+
+import {dependencyDecorator} from './ioc/decorators';
 
 
 export class Container {
     @logger
     log
 
-    constructor(ServiceClass) {
-        this.ServiceClass = ServiceClass;
+    constructor() {
         this.entrypoints = [];
         this.activeTasks = new TaskSet();
     }
 
-    createEntrypoints() {
-        let {log, entrypoints, ServiceClass} = this;
+    createEntrypoints(ServiceClass) {
+        let {log, entrypoints} = this;
 
         log = log.timeit();
         log.debug`creating entrypoints`;
 
-        for (let descr of getDecoratedMethods(ServiceClass)) {
-            log.debug`creating entrypoint for ${descr.decorator}`;
-            let ep = getImplementation(descr, this);
+        for (let decoration of getDecoratedMethods(ServiceClass)) {
+
+            // TODO: support decoration in logging
+            log.debug`creating entrypoint for ${decoration.decorator}`;
+            let ep = getImplementation(decoration, this);
 
             entrypoints.push(ep);
         }
+
         log.debug`all entrypoints created in ${log.elapsed} ms`;
     }
 
-    async start() {
+    async start(ServiceClass) {
         let log = this.log.timeit();
 
         log.debug`starting container`;
 
-        this.createEntrypoints();
-        await this.startEntryPoints();
+        this.createEntrypoints(ServiceClass);
+        await this.startEntrypoints();
 
         log.debug`container started in ${log.elapsed} ms`;
     }
 
-    async startEntryPoints() {
+    async startEntrypoints() {
         let {log, entrypoints} = this;
         let starting = [];
 
@@ -110,35 +110,41 @@ export class Container {
         return this.activeTasks.spawn(taskFunction);
     }
 
-    async runWorker(source, WorkerClass, workerArgs) {
+    spawnWorker(decoration, target, ...workerArgs) {
+        return this.spawn(()=> {
+            this.log.debug`spawning worker for ${target}`;
+            let workerFunc = this.createWorker(decoration, target);
+            return this.runWorker(workerFunc, workerArgs);
+        });
+    }
+
+    createWorker(decoration, target) {
         let log = this.log.timeit();
-        let {decoration} = getContext(source);
 
-        log.debug`creating worker for ${source}`;
-        let workerCtx = create(WorkerContext, [], {target: source});
-        let workerFunc = create(WorkerClass, workerArgs, {target: workerCtx});
-        log.debug`${source} worker created in ${log.elapsed} ms`;
+        log.debug`creating worker for ${target} ${decoration}`;
+        let workerFunc = createImplementation(decoration, target);
+        log.debug`created worker ${workerFunc} in ${log.elapsed} ms`;
+        return workerFunc;
+    }
 
-        log.debug`creating handler for ${workerCtx}`;
-        let handler = createDecoratedHandler(decoration, workerCtx);
-        log.debug`handler created in ${log.elapsed} ms`;
+    async runWorker(workerFunc, workerArgs) {
+        let log = this.log.timeit();
 
-        log.debug`invoking worker ${workerCtx}`;
-        await workerFunc(handler);
-        log.debug`worker ${workerCtx} completed in ${log.elapsed} ms`;
+        log.debug`invoking worker ${workerFunc}`;
+        await workerFunc(...workerArgs);
+        log.debug`worker ${workerFunc} completed in ${log.elapsed} ms`;
     }
 
     @provide(worker)
-    worker(decoration, source) {
-        let workerClass = decoration.decoratorDescr.dependencyClass;
-        return (...args)=> {
-            this.log.debug`spawning worker for ${source}`;
-            return this.spawn(()=> this.runWorker(source, workerClass, args));
-        };
+    worker(decoration, target) {
+        return this.spawnWorker.bind(this, decoration, target);
     }
-
-    // @provide(getImplementation)
-    // getImplementation(decoration) {
-    //     this.log.debug`resolving impl for ${decoration.decorator}`;
-    // }
 }
+
+
+export function container(proto, name, descr) {
+    return dependencyDecorator(container, {
+        dependencyClass: Container
+    })(proto, name, descr);
+}
+

@@ -7,7 +7,7 @@ import {config} from './config';
 import {Script} from './config/loader';
 import {getContexts, getContext} from './ioc/context';
 import {dependencyDecorator} from './ioc/decorators';
-import {factory, callable} from './ioc/create';
+import {callable} from './ioc/create';
 
 
 export const RESET = '\x1b[0m';
@@ -33,7 +33,7 @@ function fg(col, mod=Normal) {
 }
 
 const COLOR_MAP = {
-    WorkerContext: fg(Green),
+    worker: fg(Green),
     DEBUG: fg(Yellow, Faint),
     ERROR: fg(Intense + Red, Bold),
     INFO: fg(White),
@@ -43,9 +43,9 @@ const COLOR_MAP = {
 const MILLI_SECONDS = 1000;
 const NANO_SECONDS = 1000000;
 
-const ERROR = 3;
-const INFO = 2;
-const DEBUG = 1;
+export const ERROR = 3;
+export const INFO = 2;
+export const DEBUG = 1;
 
 const LEVELS = {
     debug: DEBUG,
@@ -73,10 +73,6 @@ export class BaseLogger {
     error(parts, ...args) {
         this.log(ERROR, parts, args);
     }
-
-    log() {
-        // nop
-    }
 }
 
 export class TimingLogger extends BaseLogger {
@@ -97,14 +93,20 @@ export class TimingLogger extends BaseLogger {
     }
 }
 
-function nameSingleCtx(ctx, cls, nme, dec, id) { /* eslint max-params: 0 */
-    let clr = COLOR_MAP[ctx] || COLOR_MAP.name;
-    if (id !== undefined) {
-        return `${clr}<${id}>${RESET}`;
-    } else if (cls !== undefined) {
-        return `${clr}${cls}.${nme}@${dec}${RESET}`;
+function nameSingleCtx(tgt, cls, nme, dec, wrk) { /* eslint max-params: 0 */
+    let clr = COLOR_MAP[tgt] || COLOR_MAP.name;
+    let name = `${clr}${tgt}${RESET}`;
+
+    if (cls !== undefined) {
+        name = `${clr}${cls}.${nme}@${dec}${RESET}`;
     }
-    return `${clr}${ctx}${RESET}`;
+
+    if (wrk !== undefined) {
+        clr = COLOR_MAP[dec] || COLOR_MAP.name;
+        name = `${name}${clr}<${wrk.id}>${RESET}`;
+    }
+
+    return name;
 }
 
 function getContextDescr(ctx) {
@@ -114,56 +116,41 @@ function getContextDescr(ctx) {
         let {decorator, decoratedClass, decoratedName} = decoration;
 
         return {
-            ctx: target.constructor.name,
+            tgt: target.constructor.name,
             cls: decoratedClass.name,
             nme: decoratedName,
             dec: decorator.name,
-            id: target.id
+            wrk: target.__wrk
         };
     }
 
+    // TODO: fallback for non-injected targets
     return {
-        ctx: target.constructor.name,
-        id: target.id
+        tgt: target.constructor.name
     };
 }
 
 function nameContext(target) {
     let ctxs = getContexts(target);
 
-    let {wrk, names, name} = array(ctxs)
+    let names = array(ctxs)
         .map(getContextDescr)
-        .reduce((rslt, {ctx, cls, nme, dec, id})=> {
-            let formattedName = nameSingleCtx(ctx, cls, nme, dec, id);
+        .map(({tgt, cls, nme, dec, wrk})=>
+            nameSingleCtx(tgt, cls, nme, dec, wrk))
+        .reverse();
 
-            if (id === undefined) {
-                if (cls === undefined) {
-                    rslt.name = formattedName;
-                } else {
-                    rslt.names.unshift(formattedName);
-                }
-            } else {
-                rslt.wrk = formattedName;
-            }
-
-            return rslt;
-        }, {names: []});
-
-    if (wrk) {
-        return `${wrk}${names.join('-')}`;
-    } else if (names.length > 0) {
-        return `${names.join('-')}`;
-    }
-    return `${name}`;
+    return `${names.join('-')}`;
 }
 
 function formatItem(obj) {
-    if (obj instanceof Function) {
+    if (obj === null) {
+
+    } else if (getContext(obj) !== undefined) {
+        return nameContext(obj);
+    } else if (obj instanceof Function) {
         return `${fg(Cyan)}${obj.name}()${RESET}`;
     } else if (obj instanceof Error) {
         return obj.stack;
-    } else if (getContext(obj) !== undefined) {
-        return nameContext(obj);
     }
     return inspect(obj, {colors: true, depth: 0});
 }
@@ -188,7 +175,7 @@ export class Formatter {
 
             get shortColoredLevel() {
                 let levelName = LEVEL_NAMES[level];
-                let clr = COLOR_MAP[levelName] || RESET;
+                let clr = COLOR_MAP[levelName];
                 return `${clr}${levelName[0]}${RESET}`;
             },
 
@@ -208,7 +195,6 @@ export class Formatter {
 export function formatter(proto, name, descr) {
     return dependencyDecorator(formatter, {
         dependencyClass: Formatter,
-        constructorArgs: [],
         config: [{
             key: 'formatter',
             description: 'Custom Formatter'
@@ -217,45 +203,41 @@ export function formatter(proto, name, descr) {
 }
 
 
-export class StreamHandler {
-    constructor(format, stream) {
-        this.format = format;
-        this.stream = stream;
+export class Handler {
 
-        // TODO: resolve stream param
+    // @config('class', 'handler class')
+    // cls='nuss/logging/StreamHandler'
+
+    @config('arguments')
+    args=['process.stdout']
+
+    @formatter
+    format
+
+    constructor() {
         /* global process: true */
         this.stream = process.stdout;
     }
 
     handle(level, target, parts, args) {
         let entry = this.format(level, target, parts, args);
+
+        // TODO: how can entry be undefined?
         if (entry !== undefined) {
             this.stream.write(`${entry}\n`);
         }
     }
-}
 
-
-export class Handler {
-    @config('class', 'handler class')
-    cls='nuss/logging/StreamHandler'
-
-    @config('arguments')
-    args=['process.stdout']
-
-    @formatter
-    formatter
-
-    @factory
-    getHandler() {
-        return new StreamHandler(this.formatter, ...this.args);
-    }
+    // @factory
+    // getHandler() {
+    //     // TODO: resolve class from config
+    //     return new StreamHandler(this.formatter, ...this.args);
+    // }
 }
 
 export function handler(proto, name, descr) {
     return dependencyDecorator(handler, {
         dependencyClass: Handler,
-        constructorArgs: [],
         config: [{
             key: 'handler',
             description: 'Custom Handler'
@@ -293,7 +275,6 @@ export class Logger extends BaseLogger {
 export function logger(proto, name, descr) {
     return dependencyDecorator(logger, {
         dependencyClass: Logger,
-        constructorArgs: [proto],
         config: [{
             root: true,
             key: 'logger',

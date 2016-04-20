@@ -8,7 +8,6 @@ import {getTargetConfigPath} from './resolve';
 export function configData(proto, name, descr) {
     return dependencyDecorator(configData, {
         dependencyClass: Object,
-        constructorArgs: []
     })(proto, name, descr);
 }
 
@@ -18,7 +17,7 @@ class Config {
     data
 
     @factory
-    get value() {
+    getValue() {
         let {data} = this;
 
         let expandedKey = getTargetConfigPath(this)
@@ -54,7 +53,6 @@ export function config(key, description) {
 
         return dependencyDecorator(config, {
             dependencyClass: Config,
-            constructorArgs: [],
             config: [{key, optional: false, description, value}]
         })(proto, name, descr);
     };

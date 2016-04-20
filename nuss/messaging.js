@@ -1,6 +1,6 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
-import {worker, workerContext} from './worker';
+import {worker, workerContext, handler} from './worker';
 import {logger} from './logging';
 import {config} from './config';
 
@@ -111,19 +111,17 @@ export class MessageWorker {
     @workerContext
     workerCtx
 
-    constructor(msg, queueUrl) {
-        this.msg = msg;
-        this.queueUrl = queueUrl;
-    }
+    @handler
+    handle
 
     @callable
-    async processMessage(handler) {
-        let {log, queueUrl, msg, workerCtx} = this;
+    async processMessage(msg, queueUrl) {
+        let {log, workerCtx, handle} = this;
 
         transferHeadersToCtx(msg, workerCtx);
 
         try {
-            await handler(msg.Body);
+            await handle(msg.Body);
         } catch (err) {
             log.error`worker ${err.stack}`;
             throw err;
