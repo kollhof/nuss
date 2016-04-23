@@ -1,5 +1,6 @@
 import {getImplementation, provide} from './ioc/resolve';
-import {createInstance, isCallable, isFactory} from './ioc/create';
+import {getDecoratedMethods} from './ioc/decorators';
+import {createInstance, isCallable} from './ioc/create';
 import {configData, config} from './config';
 import {flattenConfigData} from './config/loader';
 import {stub, createStubInstance} from 'sinon';
@@ -44,7 +45,15 @@ export class TestContainer {
     }
 }
 
-export function createMocked(cls, args, confData={}) {
+export function createMocked(cls, args=[], confData={}) {
     let container = new TestContainer(cls, confData);
     return container.createTestSubject(args);
 }
+
+
+export function* getEntrypoints(cls, target={}) {
+    for (let decoration of getDecoratedMethods(cls)) {
+        yield getImplementation(decoration, target);
+    }
+}
+

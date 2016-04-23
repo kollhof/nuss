@@ -1,4 +1,4 @@
-import {describe, it, expect, match, spy, stub} from './testing';
+import {describe, it, beforeEach, expect, match, spy, stub} from './testing';
 import {createMocked} from 'nuss/testing';
 import {
     RequestWorker,
@@ -178,7 +178,7 @@ describe('@httpServer()', ()=> {
 });
 
 
-describe('RequestWorker', ()=> {
+describe('RequestWorker()', ()=> {
     let req = {
         headers: {
             trace: 'spam'
@@ -190,16 +190,18 @@ describe('RequestWorker', ()=> {
         send: spy()
     };
 
-    let worker = createMocked(RequestWorker, [req, resp]);
+    let worker = null;
+
+    beforeEach(()=> {
+        worker = createMocked(RequestWorker, []);
+    });
 
     it('should be a @callable', ()=> {
         expect(isCallable(RequestWorker)).to.equal(true);
     });
 
     it('should update worker ctx with headers', async ()=> {
-        let handler = spy();
-
-        await worker.work(handler);
+        await worker.processRequest(req, resp);
 
         expect(worker.workerCtx.setHeader)
             .to.have.been
@@ -208,11 +210,9 @@ describe('RequestWorker', ()=> {
     });
 
     it('should invoker handler with req, resp', async ()=> {
-        let handler = spy();
+        await worker.processRequest(req, resp);
 
-        await worker.work(handler);
-
-        expect(handler)
+        expect(worker.handleRequest)
             .to.have.been
             .calledOnce
             .calledWithExactly(req, resp);
@@ -220,10 +220,9 @@ describe('RequestWorker', ()=> {
 
     it('should send internal-server-error if handler throws', async ()=> {
         let err = new Error('oh no');
+        worker.handleRequest.throws(err);
 
-        await worker.work(()=> {
-            throw err;
-        });
+        await worker.processRequest(req, resp);
 
         expect(resp.status)
             .to.have.been
@@ -266,11 +265,11 @@ describe('HttpRoute()', ()=> {
         let req = {};
         let resp = {};
 
-        let [, , handleReq] = server.addRoute.getCall(0).args;
+        let [, , processRequest] = server.addRoute.getCall(0).args;
 
-        handleReq(req, resp);
+        processRequest(req, resp);
 
-        expect(httpRoute.handleRequest)
+        expect(httpRoute.processRequest)
             .to.have.been
             .calledOnce
             .calledWithExactly(req, resp);

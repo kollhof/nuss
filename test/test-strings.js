@@ -6,7 +6,7 @@ import {indenter} from 'nuss/strings';
 describe('indenter()', ()=> {
     it('should not indent on first level', ()=> {
         let indent = indenter();
-        expect(indent`foobar`).to.equal('foobar');
+        expect(indent`foobar ${'spam'}`).to.equal('foobar spam');
     });
 
     it('should indent with 4 spaces for next() level', ()=> {

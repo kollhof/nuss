@@ -39,6 +39,7 @@ describe('@fileSystem()', ()=> {
         fs
     }
 
+    // TODO: we should not care about the details of decorators
     it('should decorate', ()=> {
         let [descr] = getDecoratedProps(Foobar);
 

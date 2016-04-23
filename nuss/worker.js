@@ -1,53 +1,8 @@
 import {dependencyDecorator} from './ioc/decorators';
 import {callable, factory} from './ioc/create';
-import {getContext} from './ioc/context';
+import {getContext, getWorkerContext, setWorkerContext} from './ioc/context';
+import {handler} from './handler';
 import {shortid} from './uuid';
-import {createHandler} from './ioc/resolve';
-import {logger} from './logging';
-
-
-export function getHandlerContext(obj) {
-    let ctx = getContext(obj) || {target: obj};
-
-    while (ctx !== undefined) {
-        if (ctx.decoration.decoratedMethod !== undefined) {
-            return ctx;
-        }
-
-        ctx = getContext(ctx.target);
-    }
-}
-
-
-export class Handler {
-    @logger
-    log
-
-    @factory
-    getHandler({target}) {
-        let log = this.log.timeit();
-
-        let ctx = getHandlerContext(target);
-
-        // TODO: required if testing method decorators without
-        // using createMocked()
-        // if (ctx === undefined) {
-        //     return;
-        // }
-
-        log.debug`creating handler`;
-        let hndlr = createHandler(ctx.decoration, target);
-        log.debug`created handler in ${log.elapsed} ms`;
-
-        return hndlr;
-    }
-}
-
-export function handler(proto, name, descr) {
-    return dependencyDecorator(handler, {
-        dependencyClass: Handler
-    })(proto, name, descr);
-}
 
 
 export class Worker {
@@ -70,29 +25,18 @@ export function worker(wokerClassOrProto, name, descr) {
     return worker(Worker)(wokerClassOrProto, name, descr);
 }
 
-
+// TODO: could be a findImplFor(ctx, worker)
 function findWorker(ctx) {
+    let wrk = ctx.target;
+
     while (ctx !== undefined) {
         if (ctx.decoration.decorator === worker) {
-            return ctx.target;
+            return wrk;
         }
-
-        ctx = getContext(ctx.target);
+        wrk = ctx.target;
+        ctx = getContext(wrk);
     }
 }
-
-
-const WORKER_CONTEXT = Symbol('worker-context');
-
-export function setWorkerContext(wrk, wrkCtx) {
-    wrk[WORKER_CONTEXT] = wrkCtx;
-    return wrkCtx;
-}
-
-export function getWorkerContext(wrk) {
-    return wrk[WORKER_CONTEXT];
-}
-
 
 export class WorkerContext {
     id=shortid()
@@ -115,12 +59,14 @@ export class WorkerContext {
 
     @factory
     getContextFromWorker(ctx) {
+        // TODO: this finds the target of a worker, not the worker
         let wrk = findWorker(ctx);
         let wrkCtx = getWorkerContext(wrk);
 
         if (wrkCtx === undefined) {
             wrkCtx = setWorkerContext(wrk, this);
         }
+
         return wrkCtx;
     }
 }

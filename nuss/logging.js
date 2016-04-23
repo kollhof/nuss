@@ -1,43 +1,24 @@
 import {inspect} from 'util';
 import vm from 'vm';
 
-import {array} from './iter';
 import {hrtime} from './profiling';
 import {config} from './config';
 import {Script} from './config/loader';
-import {getContexts, getContext} from './ioc/context';
+import {getContext, getWorkerContext} from './ioc/context';
 import {dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
+import {
+    colorize, intense,
+    Green, Yellow, White, Red, Faint, Bold, Cyan
+} from './colorize';
 
-
-export const RESET = '\x1b[0m';
-
-export const Black = 0;
-export const Red = 1;
-export const Green = 2;
-export const Yellow = 3;
-export const Blue = 4;
-export const Magenta = 5;
-export const Cyan = 6;
-export const White = 7;
-
-export const Bold = 1;
-export const Faint = 2;
-export const Normal = 22;
-
-export const Intense = 60;
-export const Standard = 30;
-
-function fg(col, mod=Normal) {
-    return `\x1b[${Standard+col};${mod}m`;
-}
 
 const COLOR_MAP = {
-    worker: fg(Green),
-    DEBUG: fg(Yellow, Faint),
-    ERROR: fg(Intense + Red, Bold),
-    INFO: fg(White),
-    name: fg(Green, Faint)
+    worker: colorize(Green),
+    DEBUG: colorize(Yellow, Faint),
+    ERROR: colorize(intense(Red), Bold),
+    INFO: colorize(White),
+    name: colorize(Green, Faint)
 };
 
 const MILLI_SECONDS = 1000;
@@ -58,7 +39,6 @@ const LEVEL_NAMES = {
     [ERROR]: 'ERROR',
     [INFO]: 'INFO'
 };
-
 
 export class BaseLogger {
 
@@ -93,51 +73,45 @@ export class TimingLogger extends BaseLogger {
     }
 }
 
-function nameSingleCtx(tgt, cls, nme, dec, wrk) { /* eslint max-params: 0 */
-    let clr = COLOR_MAP[tgt] || COLOR_MAP.name;
-    let name = `${clr}${tgt}${RESET}`;
 
-    if (cls !== undefined) {
-        name = `${clr}${cls}.${nme}@${dec}${RESET}`;
-    }
+function getName(obj, {decoration}) {
+    let {decorator, decoratedClass, decoratedName} = decoration;
+    let wrk = getWorkerContext(obj);
+
+    let cls = decoratedClass.name;
+    let nme = decoratedName;
+    let dec = decorator.name;
+
+    let clr = COLOR_MAP.name;
+
+    let name = clr`${cls}.${nme}@${dec}`;
 
     if (wrk !== undefined) {
         clr = COLOR_MAP[dec] || COLOR_MAP.name;
-        name = `${name}${clr}<${wrk.id}>${RESET}`;
+        name += COLOR_MAP.worker`<${wrk.id}>`;
     }
 
     return name;
 }
 
-function getContextDescr(ctx) {
-    let {decoration, target} = ctx;
 
-    if (decoration !== undefined) {
-        let {decorator, decoratedClass, decoratedName} = decoration;
+function getNamePath(obj) {
+    let names = [];
+    let ctx = getContext(obj);
 
-        return {
-            tgt: target.constructor.name,
-            cls: decoratedClass.name,
-            nme: decoratedName,
-            dec: decorator.name,
-            wrk: target.__wrk
-        };
+    if (ctx === undefined) {
+        let clr = COLOR_MAP.name;
+        names.push(clr`${obj.constructor.name}`);
     }
 
-    // TODO: fallback for non-injected targets
-    return {
-        tgt: target.constructor.name
-    };
-}
+    while (ctx !== undefined) {
+        let name = getName(obj, ctx);
 
-function nameContext(target) {
-    let ctxs = getContexts(target);
+        names.unshift(name);
 
-    let names = array(ctxs)
-        .map(getContextDescr)
-        .map(({tgt, cls, nme, dec, wrk})=>
-            nameSingleCtx(tgt, cls, nme, dec, wrk))
-        .reverse();
+        obj = ctx.target;
+        ctx = getContext(obj);
+    }
 
     return `${names.join('-')}`;
 }
@@ -146,9 +120,9 @@ function formatItem(obj) {
     if (obj === null) {
 
     } else if (getContext(obj) !== undefined) {
-        return nameContext(obj);
+        return getNamePath(obj);
     } else if (obj instanceof Function) {
-        return `${fg(Cyan)}${obj.name}()${RESET}`;
+        return colorize(Cyan)`${obj.name}()`;
     } else if (obj instanceof Error) {
         return obj.stack;
     }
@@ -158,6 +132,9 @@ function formatItem(obj) {
 export class Formatter {
     @config('format', 'message format')
     formatScript=new Script('`${shortColoredLevel}:${context}: ${message}`')
+
+    // @config('colorize messages')
+    // colorize=true
 
     @callable
     format(level, target, parts, args) {
@@ -170,13 +147,13 @@ export class Formatter {
             level,
 
             get context() {
-                return nameContext(target);
+                return getNamePath(target);
             },
 
             get shortColoredLevel() {
                 let levelName = LEVEL_NAMES[level];
                 let clr = COLOR_MAP[levelName];
-                return `${clr}${levelName[0]}${RESET}`;
+                return clr`${levelName[0]}`;
             },
 
             get message() {
@@ -216,7 +193,7 @@ export class Handler {
 
     constructor() {
         /* global process: true */
-        this.stream = process.stdout;
+        this.stream = process.stderr;
     }
 
     handle(level, target, parts, args) {
@@ -256,7 +233,7 @@ export class Logger extends BaseLogger {
     constructor() {
         super();
         this.target = getContext(this).target;
-        this.level = LEVELS[this.level] || ERROR;
+        this.level = LEVELS[this.level];
     }
 
     log(level, parts, args) {

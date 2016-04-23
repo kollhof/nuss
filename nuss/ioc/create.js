@@ -5,11 +5,11 @@ const SPECIALS = new DefaultWeakMap(()=> ({}));
 
 
 export function callable(proto, name, descr) {
-    SPECIALS.set(proto, {func: descr.value});
+    SPECIALS.get(proto).func = descr.value;
 }
 
 export function factory(proto, name, descr) {
-    SPECIALS.set(proto, {fac: descr.value});
+    SPECIALS.get(proto).fac = descr.value;
 }
 
 
@@ -45,6 +45,7 @@ export function create(cls, args=[], ctx) {
         obj = fac.call(obj, ctx); /* eslint prefer-reflect: 0 */
     } else if (func !== undefined) {
         obj = func.bind(obj);
+        // TODO: overwrite constructor property or even Object.setPrototypeOf?
         setContext(obj, ctx);
     }
 

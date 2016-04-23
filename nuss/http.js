@@ -1,6 +1,7 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
 import {callable, factory} from './ioc/create';
 import {worker, workerContext} from './worker';
+import {handler} from './handler';
 import {logger} from './logging';
 import {config} from './config';
 
@@ -49,9 +50,9 @@ export class HttpServer {
         this.connections = new Set();
     }
 
-    addRoute(verb, route, handler) {
-        this.log.debug`registering handler for route ${route}`;
-        this.router[verb](route, handler);
+    addRoute(verb, route, requestHandler) {
+        this.log.debug`registering request handler for route '${route}'`;
+        this.router[verb](route, requestHandler);
     }
 
     manageConnection(conn) {
@@ -157,23 +158,21 @@ export class RequestWorker {
     @logger
     log
 
+    @handler
+    handleRequest
+
     @workerContext
     workerCtx;
 
-    constructor(req, resp) {
-        this.req = req;
-        this.resp = resp;
-    }
-
     @callable
-    async work(handler) {
-        let {log, workerCtx, req, resp} = this;
+    async processRequest(req, resp) {
+        let {log, workerCtx} = this;
 
         log.debug`applying request headers to worker context`;
         workerCtx.setHeader('trace', req.headers.trace);
 
         try {
-            await handler(req, resp);
+            await this.handleRequest(req, resp);
         } catch (err) {
             log.error`${err} handling request`;
             resp.status(INTERNAL_SERVER_ERROR);
@@ -187,18 +186,14 @@ export class RequestWorker {
 }
 
 export class HttpRoute {
-    @logger
-    log
-
     @httpServer
     server
 
     @worker(RequestWorker)
-    handleRequest
+    processRequest
 
     constructor(route) {
-        this.server
-            .addRoute(GET, route, (...args)=> this.handleRequest(...args));
+        this.server.addRoute(GET, route, this.processRequest.bind(this));
     }
 
     async start() {

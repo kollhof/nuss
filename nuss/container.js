@@ -25,7 +25,7 @@ export class Container {
         for (let decoration of getDecoratedMethods(ServiceClass)) {
 
             // TODO: support decoration in logging
-            log.debug`creating entrypoint for ${decoration.decorator}`;
+            log.debug`creating entrypoint for @${decoration.decorator}`;
             let ep = getImplementation(decoration, this);
 
             entrypoints.push(ep);
@@ -121,8 +121,10 @@ export class Container {
     createWorker(decoration, target) {
         let log = this.log.timeit();
 
-        log.debug`creating worker for ${target} ${decoration}`;
+        log.debug`creating worker for ${target}`;
+
         let workerFunc = createImplementation(decoration, target);
+
         log.debug`created worker ${workerFunc} in ${log.elapsed} ms`;
         return workerFunc;
     }
@@ -131,8 +133,11 @@ export class Container {
         let log = this.log.timeit();
 
         log.debug`invoking worker ${workerFunc}`;
-        await workerFunc(...workerArgs);
+
+        let rslt = await workerFunc(...workerArgs);
+
         log.debug`worker ${workerFunc} completed in ${log.elapsed} ms`;
+        return rslt;
     }
 
     @provide(worker)

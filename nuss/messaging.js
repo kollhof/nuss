@@ -1,6 +1,7 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
 import {callable} from './ioc/create';
-import {worker, workerContext, handler} from './worker';
+import {worker, workerContext} from './worker';
+import {handler} from './handler';
 import {logger} from './logging';
 import {config} from './config';
 
@@ -70,7 +71,7 @@ class Publisher {
 
         let attrs = {};
 
-        for (let key of ['foobar', 'trace']) {
+        for (let key of ['trace']) {
             let val = workerCtx.getHeader(key);
 
             if (val !== undefined) {
@@ -83,7 +84,7 @@ class Publisher {
 
         return await this.sqs.sendMessage({
             QueueUrl: queueUrl,
-            MessageAttributes: attrs,
+            //TODO: MessageAttributes: attrs,
             MessageBody: JSON.stringify(msg)
         });
     }
@@ -117,6 +118,8 @@ export class MessageWorker {
     @callable
     async processMessage(msg, queueUrl) {
         let {log, workerCtx, handle} = this;
+
+        log.debug`processing msg ${msg.MessageId}`;
 
         transferHeadersToCtx(msg, workerCtx);
 

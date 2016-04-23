@@ -1,55 +1,40 @@
-import {describe, it, expect} from './testing';
-import {createMocked} from 'nuss/testing';
-
-import {Timer, timer} from 'nuss/timer';
+import {describe, it, expect, spy} from './testing';
+import {getEntrypoints} from 'nuss/testing';
+import {timer} from 'nuss/timer';
 import {sleep} from 'nuss/async';
-import {getDecoratedMethods} from 'nuss/ioc/decorators';
 
 
 const SLEEP_TIME = 1;
 
-describe('Timer()', ()=> {
-    it('should start and call handleTick() and stop', async ()=> {
-        let tmr = createMocked(Timer, [0]);
-
-        await tmr.start();
-        await sleep(SLEEP_TIME);
-        expect(tmr.handleTick)
-            .to.have.been
-            .calledWithExactly();
-
-        tmr.handleTick.reset();
-
-        await tmr.stop();
-        await sleep(SLEEP_TIME);
-        expect(tmr.handleTick)
-            .to.have
-            .callCount(0);
-    });
-});
-
 
 describe('@timer()', ()=> {
-    class Foobar {
+    let handleTick = spy();
+
+    class Service {
 
         @timer(0);
         spam() {
-            // nothing to do
+            handleTick();
         }
     }
 
-    it('should decorate', ()=> {
-        let [descr] = getDecoratedMethods(Foobar);
+    it('should invoke decorated method and stop', async ()=> {
+        let [tmr] = getEntrypoints(Service);
 
-        expect(descr).to.deep.equal({
-            decorator: timer,
-            decoratorDescr: {
-                dependencyClass: Timer,
-                constructorArgs: [0]
-            },
-            decoratedClass: Foobar,
-            decoratedMethod: Foobar.prototype.spam,
-            decoratedName: 'spam'
-        });
+        await tmr.start();
+
+        await sleep(SLEEP_TIME);
+        expect(handleTick)
+            .to.have.been
+            .calledWithExactly();
+
+        await tmr.stop();
+        handleTick.reset();
+
+        await sleep(SLEEP_TIME);
+        expect(handleTick)
+            .to.have
+            .callCount(0);
+
     });
 });
