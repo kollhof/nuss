@@ -1,37 +1,76 @@
 import {methodDecorator, dependencyDecorator} from './ioc/decorators';
-import {callable} from './ioc/create';
-import {spawnWorker, workerContext} from './worker';
+import {callable, factory} from './ioc/create';
+import {worker, workerContext} from './worker';
+import {handler} from './handler';
 import {logger} from './logging';
 import {config} from './config';
+
+import {createServer} from 'http';
 
 import express, {Router} from 'express';
 
 
-export const GET='get';
+export const GET = 'get';
+export const INTERNAL_SERVER_ERROR = 500;
+
+export const CONNECTION_TIMEOUT = 10;
+export const DEFAULT_PORT = 8080;
+
+// TODO: should this map come from the container?
+export const SERVERS = new Map();
 
 
 export class HttpServer {
+    // TODO: should be an injected shared Map provided by the container
+    // this would allow the container to delete the object when it dies
+    // instead of using a module local object that may never get cleaned up
+    servers=SERVERS
+
+    // TODO: should probably wrap node's server to make it injectable
+    // and help with testing
+    createServer=createServer
+
+    // TODO: wrap make injectable
+    express=express
+
     @logger
     log
 
-    @config('rootUrl')
-    rootUrl
+    @config('The base URL for all routes.')
+    rootUrl='/'
 
-    @config('port')
-    port
+    @config('The port to listen on.')
+    port=DEFAULT_PORT
 
     constructor() {
         this.started = null;
         this.stopped = null;
         this.server = null;
-
         this.router = new Router();
-        this.app = express();
+        this.connections = new Set();
     }
 
-    addRoute(verb, route, handler) {
-        this.log.debug`registering handler for route ${route}`;
-        this.router[verb](route, handler);
+    addRoute(verb, route, requestHandler) {
+        this.log.debug`registering request handler for route '${route}'`;
+        this.router[verb](route, requestHandler);
+    }
+
+    manageConnection(conn) {
+        let {connections} = this;
+
+        connections.add(conn);
+        conn.on('close', ()=> connections.delete(conn));
+    }
+
+    closeConnections() {
+        let {log, connections} = this;
+
+        for (let conn of connections) {
+            conn.setTimeout(CONNECTION_TIMEOUT, ()=> {
+                log.error`destryoing connection`;
+                conn.destroy();
+            });
+        }
     }
 
     async start() {
@@ -57,64 +96,89 @@ export class HttpServer {
     }
 
     async startServer() {
-        let {log, port, rootUrl, app} = this;
+        let {log, port, rootUrl} = this;
 
         log.debug`starting server`;
 
+        // TODO: express and createServer need to be injected properly
+        let app = this.express();
         app.use(rootUrl, this.router);
+
+        this.server = this.createServer(app);
+        this.server.on('connection', (conn)=> this.manageConnection(conn));
+
         await new Promise((resolve)=> {
-            this.server = app.listen(port, resolve);
+            this.server.listen(this.port, resolve);
         });
 
         log.debug`server listening at 'localhost:${port}${rootUrl}'`;
     }
 
     async stopServer() {
-        this.log.debug`stopping server`;
-        await new Promise((resolve)=>
-            this.server.close(resolve));
-        this.log.debug`stopped server`;
+        let {log, servers} = this;
+
+        servers.delete(this.port);
+
+        log.debug`stopping server`;
+
+        await new Promise((resolve)=> {
+            this.server.close(resolve);
+            this.closeConnections();
+        });
+        log.debug`stopped server`;
+    }
+
+    @factory
+    getSharedServer() {
+        let {port, servers} = this;
+
+        let server = servers.get(port);
+
+        if (server === undefined) {
+            servers.set(port, this);
+            return this;
+        }
+        return server;
     }
 }
 
-const SHARED_BY_PROCESS = Symbol('shared-by-process');
-
-export function httpServer(...args) {
+export function httpServer(proto, name, descr) {
     return dependencyDecorator(httpServer, {
         dependencyClass: HttpServer,
-        constructorArgs: [],
-        sharingKey: ()=> SHARED_BY_PROCESS
-    })(...args);
+        config: [{
+            root: true,
+            key: 'http',
+            description: 'HTTP-server config for @http()'
+        }]
+    })(proto, name, descr);
 }
 
-const INTERNAL_SERVER_ERROR = 500;
 
 export class RequestWorker {
     @logger
     log
 
+    @handler
+    handleRequest
+
     @workerContext
     workerCtx;
 
-    constructor(req, resp) {
-        this.req = req;
-        this.resp = resp;
-    }
-
     @callable
-    async work(handler) {
-        let {log, workerCtx, req, resp} = this;
+    async processRequest(req, resp) {
+        let {log, workerCtx} = this;
 
         log.debug`applying request headers to worker context`;
-        workerCtx.setHeader('foobar', req.headers.foobar);
         workerCtx.setHeader('trace', req.headers.trace);
 
         try {
-            await handler(req, resp);
+            await this.handleRequest(req, resp);
         } catch (err) {
             log.error`${err} handling request`;
-            resp.status(INTERNAL_SERVER_ERROR)
-                .send(err.stack);
+            resp.status(INTERNAL_SERVER_ERROR);
+
+            // TODO: security risk!
+            resp.send(err.stack);
         }
 
         log.debug`http request handled`;
@@ -125,19 +189,11 @@ export class HttpRoute {
     @httpServer
     server
 
-    @logger
-    log
-
-    @spawnWorker(RequestWorker)
-    spawnWorker
+    @worker(RequestWorker)
+    processRequest
 
     constructor(route) {
-        this.server
-            .addRoute(GET, route, (...args)=> this.handleRequest(...args));
-    }
-
-    handleRequest(req, resp) {
-        this.spawnWorker(req, resp);
+        this.server.addRoute(GET, route, this.processRequest.bind(this));
     }
 
     async start() {
@@ -145,7 +201,6 @@ export class HttpRoute {
     }
 
     async stop() {
-        this.log.debug`stopping route`;
         await this.server.stop();
     }
 }

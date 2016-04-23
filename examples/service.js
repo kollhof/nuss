@@ -3,7 +3,7 @@ import {http} from 'nuss/http';
 import {consumer, publisher} from 'nuss/messaging';
 import {logger} from 'nuss/logging';
 import {workerContext} from 'nuss/worker';
-
+import {config} from 'nuss/config';
 
 const START_COUNTER = 0;
 const TIMER_SLEEP_TIME = 1000;
@@ -21,11 +21,14 @@ export class Foobar {
     @logger
     log
 
-    @publisher('foobar')
-    shrub
-
     @workerContext
     workerCtx
+
+    @config('Important spam config')
+    spam='ham'
+
+    @publisher('foobar')
+    shrub
 
 
     @consumer('foobar')
@@ -45,7 +48,8 @@ export class Foobar {
         let cntr = inc();
 
         log.debug`-----${cntr}-----`;
-        this.shrub({ni: cntr});
+        log.debug`config: ${this.spam}`;
+        await this.shrub({ni: cntr});
         log.debug`ctx headers ${this.workerCtx.headers}`;
         log.debug`-----------------`;
     }
@@ -58,7 +62,7 @@ export class Foobar {
         log.debug`-----${cntr}-----`;
         this.log.debug`http: ${req.headers}`;
         log.debug`ctx headers ${this.workerCtx.headers}`;
-        resp.end(`Hello World:\n`);
+        resp.end(`Hello World: ${cntr}\n`);
         log.debug`-----------------`;
     }
 
@@ -70,9 +74,8 @@ export class Foobar {
         log.debug`-----${cntr}-----`;
         this.log.debug`http: ${req.headers}`;
         log.debug`ctx headers ${this.workerCtx.headers}`;
-        this.shrub({ni: cntr});
+        await this.shrub({ni: cntr});
         resp.end(`Hello World 2: ${cntr}`);
         log.debug`-----------------`;
     }
 }
-

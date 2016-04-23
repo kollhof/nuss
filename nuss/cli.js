@@ -1,39 +1,101 @@
 #!/usr/bin/env node
 'use strict';
 
-import {ArgumentParser} from 'argparse';
-import {logger} from './logging';
-import {Container} from './container';
 import path from 'path';
+
+import {ArgumentParser} from 'argparse';
+
+import {logger} from './logging';
+import {printConfig} from './config/generator';
+import {flattenConfigData, loadConfig} from './config/loader';
+import {configData} from './config';
+import {container} from './container';
+import {fileSystem} from './filesystem';
+import {factory} from './ioc/create';
+import {provide} from './ioc/resolve';
+import {dependencyDecorator} from './ioc/decorators';
+
 
 const EXIT_NO_ERROR = 0;
 const EXIT_ERROR = 1;
 
+let nussArgs = new ArgumentParser({
+    version: '0.0.1',
+    addHelp: true,
+    description: 'foo container'
+});
+
+nussArgs.addArgument(
+    ['--generate-config'], {
+        help: 'Generate a config file for a service',
+        action: 'storeTrue'
+    }
+);
+
+nussArgs.addArgument(
+    ['--config'], {
+        help: 'importable configuration module (.json file or .js module)',
+        required: false
+    }
+);
+
+nussArgs.addArgument(
+    ['--service'], {
+        help: 'importable module and class e.g. example/service:Foobar',
+        required: true
+    }
+);
+
+
+class ArgParser {
+    constructor(parser) {
+        this.parser = parser;
+    }
+
+    @factory
+    parseArgs() {
+        return this.parser.parseArgs();
+    }
+}
+
+export function cmdArgs(parser) {
+    return dependencyDecorator(cmdArgs, {
+        dependencyClass: ArgParser,
+        constructorArgs: [parser]
+    });
+}
+
 
 export class Nuss {
+    @cmdArgs(nussArgs)
+    args
+
+    @fileSystem
+    fs
+
     @logger
     log
+
+    @container
+    container
 
     constructor(process) {
         this.process = process;
     }
 
-    async main(args) {
+    async main() {
+        let {args} = this;
+
         this.registerProcessEvents();
 
-        if (args.require) {
-            /* global require: true */
-            require(args.require);
+        let cls = this.getServiceClass();
+
+        if (args.generate_config) {
+            printConfig(cls, process.stdout);
+            return;
         }
 
-        let [modFile, clsName] = args.service.split(':');
-        let mod = require(path.resolve(modFile));
-        let cls = mod[clsName];
-        let config = require(path.resolve(args.config)).default;
-
-        let runner = new Container(cls, config);
-        this.runner = runner;
-        await runner.start();
+        await this.container.start(cls);
     }
 
     registerProcessEvents() {
@@ -50,10 +112,10 @@ export class Nuss {
     handleUnhandledRejection(reason) {
         let {log, process} = this;
 
-        log.error`unhandled async: ${reason.stack}`;
+        log.error`unhandled async: ${reason}`;
         if (reason.errors) {
             for (let err of reason.errors) {
-                log.error`${err.stack}`;
+                log.error`--- ${err}`;
             }
         }
 
@@ -61,13 +123,52 @@ export class Nuss {
         process.exit(EXIT_ERROR);
     }
 
+    loadConfigData() {
+        let configFile = this.args.config;
+        if (configFile === null) {
+            return;
+        }
+
+        configFile = path.resolve(configFile);
+        let configSrc = this.fs.readFileSync(configFile);
+        return loadConfig(configSrc);
+    }
+
+    getServiceClass() {
+        let [modFile, clsName] = this.args.service.split(':');
+        modFile = path.resolve(modFile);
+
+        /* global require: true */
+        let mod = require(modFile);
+        return mod[clsName];
+    }
+
+    @provide(configData)
+    getConfigData() {
+        let {config} = this;
+
+        if (config !== undefined) {
+            return config;
+        }
+        let data = this.loadConfigData();
+
+        if (data === undefined) {
+            config = {};
+        } else {
+            let cls = this.getServiceClass();
+            config = flattenConfigData(cls, data);
+        }
+
+        this.config = config;
+        return config;
+    }
 
     async stop(signal) {
-        let {log, runner, process} = this;
+        let {log, process} = this;
 
         try {
             log.debug`cought signal ${signal}, stopping application`;
-            await runner.stop();
+            await this.container.stop();
             process.exit(EXIT_NO_ERROR);
         } catch (err) {
             try {
@@ -77,42 +178,13 @@ export class Nuss {
             }
         }
     }
-
 }
 
 
 export function main() {
-    let parser = new ArgumentParser({
-        version: '0.0.1',
-        addHelp: true,
-        description: 'foo runner'
-    });
-
-    parser.addArgument(
-        ['--config'], {
-            help: 'importable configuration module (.json file or .js module)',
-            required: true
-        }
-    );
-
-    parser.addArgument(
-        ['--service'], {
-            help: 'importable module and class e.g. example/service:Foobar',
-            required: true
-        }
-    );
-
-    parser.addArgument(
-        ['--require'], {
-            help: 'Extra require e.g. babel-register'
-        }
-    );
-
-    let args = parser.parseArgs();
-
     /* global process: true */
     let app = new Nuss(process);
-    app.main(args);
+    app.main();
 }
 
 /* global module: true */

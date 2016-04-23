@@ -11,3 +11,21 @@ export function* range(start, stop) {
         start += 1;
     }
 }
+
+export function last(items) {
+    if (items instanceof Array) {
+        return items[items.length -1];
+    }
+
+    let item = undefined; /* eslint no-undef-init: 0 */
+    for (item of items) {
+        // nop
+    }
+    return item;
+}
+
+
+export function array(items) {
+    return Array.from(items);
+}
+

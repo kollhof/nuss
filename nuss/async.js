@@ -116,3 +116,38 @@ export class TaskSet extends Set {
         });
     }
 }
+
+
+export function wrapNodeStyle(thisObj, func) {
+    func = func.bind(thisObj);
+
+    return (...args)=> new Promise((resolve, reject)=> {
+        func(...args, (err, result)=> {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+}
+
+const WRAPPED_FUNCS = new WeakSet();
+
+export function isWrapped(func) {
+    return WRAPPED_FUNCS.has(func);
+}
+
+export function wrap(proto, name, descr) {
+
+    // TODO: does this conform to the spec?
+    descr.value = function(...args) {
+        let wrappedObj = this.wrapped;
+        return wrapNodeStyle(wrappedObj, wrappedObj[name])(...args);
+    };
+
+    WRAPPED_FUNCS.add(descr.value);
+
+    delete descr.initializer; /* eslint prefer-reflect: 0 */
+    return descr;
+}

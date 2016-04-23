@@ -1,15 +1,15 @@
 import {getImplementation, provide} from './ioc/resolve';
-import {create} from './ioc/create';
-import {spawnWorker} from './worker';
-
+import {getDecoratedMethods} from './ioc/decorators';
+import {createInstance, isCallable} from './ioc/create';
+import {configData, config} from './config';
+import {flattenConfigData} from './config/loader';
 import {stub, createStubInstance} from 'sinon';
 
 
 export class TestContainer {
-
-    @provide(spawnWorker)
-    getSpawnWorker() {
-        return stub();
+    constructor(cls, confData) {
+        this.cls = cls;
+        this.rawConfigData = confData;
     }
 
     @provide(getImplementation)
@@ -17,10 +17,43 @@ export class TestContainer {
         let {decoratorDescr} = decoration;
         let {dependencyClass} = decoratorDescr;
 
+        if (decoration.decorator === config) {
+            return;
+        }
+
+        if (isCallable(dependencyClass)) {
+            return stub();
+        }
+
         return createStubInstance(dependencyClass);
+    }
+
+    @provide(configData)
+    getConfigData() {
+        let {confData, cls, rawConfigData} = this;
+
+        if (confData === undefined) {
+            confData = flattenConfigData(cls, rawConfigData, false);
+            this.confData = confData;
+        }
+
+        return confData;
+    }
+
+    createTestSubject(args) {
+        return createInstance(this.cls, args, {target: this});
     }
 }
 
-export function createMocked(cls, ...args) {
-    return create(cls, args, new TestContainer());
+export function createMocked(cls, args=[], confData={}) {
+    let container = new TestContainer(cls, confData);
+    return container.createTestSubject(args);
 }
+
+
+export function* getEntrypoints(cls, target={}) {
+    for (let decoration of getDecoratedMethods(cls)) {
+        yield getImplementation(decoration, target);
+    }
+}
+

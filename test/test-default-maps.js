@@ -14,14 +14,14 @@ describe('DefaultMap', ()=> {
     it('should return and store a default value', ()=> {
         let map = new DefaultMap(()=> 'foobar');
 
-        expect(map.has('spam')).to.be.false;
+        expect(map.has('spam')).to.equal(false);
         expect(map.get('spam')).to.equal('foobar');
     });
 
     it('should allow iterable in ctor', ()=> {
         let map = new DefaultMap([['spam', 'foobar']], ()=> 'ni');
 
-        expect(map.has('spam')).to.be.true;
+        expect(map.has('spam')).to.equal(true);
         expect(map.get('spam')).to.equal('foobar');
     });
 });
@@ -38,7 +38,7 @@ describe('DefaultWeakMap', ()=> {
         let map = new DefaultWeakMap(()=> 'foobar');
         let key = {};
 
-        expect(map.has(key)).to.be.false;
+        expect(map.has(key)).to.equal(false);
         expect(map.get(key)).to.equal('foobar');
     });
 
@@ -46,7 +46,7 @@ describe('DefaultWeakMap', ()=> {
         let key = {};
         let map = new DefaultWeakMap([[key, 'foobar']], ()=> 'ni');
 
-        expect(map.has(key)).to.be.true;
+        expect(map.has(key)).to.equal(true);
         expect(map.get(key)).to.equal('foobar');
     });
 });

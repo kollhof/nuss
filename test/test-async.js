@@ -1,7 +1,6 @@
-import {expect} from 'chai';
-import {it, describe} from 'mocha';
+import {describe, it, expect} from './testing';
 
-import {sleep, defer, all, SomeRejected, TaskSet} from 'nuss/async';
+import {sleep, defer, all, SomeRejected, TaskSet, wrap} from 'nuss/async';
 
 const DEFER_RESULT = 1234;
 
@@ -130,5 +129,45 @@ describe('class TaskSet()', ()=> {
             // don't care
         }
         expect(tasks.size).to.equal(NO_TASKS);
+    });
+});
+
+
+describe('@wrap', ()=> {
+    class Foo {
+        wrapped = {
+            spam(arg, raise, handle) {
+                if (raise) {
+                    handle(new Error(arg));
+                } else {
+                    handle(undefined, arg);
+                }
+            }
+        }
+
+        @wrap
+        spam
+    }
+
+    it('should call wrapped node-style', async ()=> {
+        let foo = new Foo();
+
+        let rslt = await foo.spam('foobar', false);
+
+        expect(rslt).to.equal('foobar');
+    });
+
+    it('should call wrapped node-style and raise', async ()=> {
+        let foo = new Foo();
+
+        let rslt = null;
+        try {
+            rslt = await foo.spam('foobar', true);
+        } catch (err) {
+            expect(err).to.be.instanceof(Error);
+            expect(err.message).to.equal('foobar');
+        }
+
+        expect(rslt).to.equal(null);
     });
 });
