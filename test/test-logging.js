@@ -106,7 +106,6 @@ describe('Logger()', ()=> {
 
         expect(log.handler.handle)
             .to.have.been
-            .calledOnce
             .calledWithMatch(
                 match.same(INFO),
                 match.same(getContext(log).target),

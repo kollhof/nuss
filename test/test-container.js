@@ -58,10 +58,10 @@ describe('@container()', ()=> {
 
     beforeEach(()=> {
         spamStarting.reset();
-        spamStarting.onCall(0).returns();
+        spamStarting.onFirstCall().returns();
 
         spamStopping.reset();
-        spamStopping.onCall(0).returns();
+        spamStopping.onFirstCall().returns();
 
         app = new Application();
     });
@@ -76,7 +76,7 @@ describe('@container()', ()=> {
 
     it('should wait for all entrypoints and fail, if any failed', async ()=> {
         let err = new Error('failed to start Spam');
-        spamStarting.onCall(0).throws(err);
+        spamStarting.onFirstCall().throws(err);
 
         try {
             await app.container.start(Service);
@@ -101,7 +101,7 @@ describe('@container()', ()=> {
 
     it('should ignore failing entrypoints during stop', async ()=> {
         let err = new Error('failed to stop Spam');
-        spamStopping.onCall(0).throws(err);
+        spamStopping.onFirstCall().throws(err);
 
         await app.container.start(Service);
         await app.container.stop();

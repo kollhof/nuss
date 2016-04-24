@@ -1,5 +1,5 @@
 import {describe, it, expect, spy} from './testing';
-import {getEntrypoints} from 'nuss/testing';
+import {createTestEntrypoints, spyCalled} from 'nuss/testing';
 import {timer} from 'nuss/timer';
 import {sleep} from 'nuss/async';
 
@@ -19,13 +19,15 @@ describe('@timer()', ()=> {
     }
 
     it('should invoke decorated method and stop', async ()=> {
-        let [tmr] = getEntrypoints(Service);
+        let [tmr] = createTestEntrypoints(Service);
 
         await tmr.start();
 
-        await sleep(SLEEP_TIME);
+        await spyCalled(handleTick);
+
         expect(handleTick)
             .to.have.been
+            .calledOnce
             .calledWithExactly();
 
         await tmr.stop();

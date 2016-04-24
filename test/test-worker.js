@@ -1,5 +1,5 @@
 import {describe, it, expect} from './testing';
-import {getEntrypoints} from 'nuss/testing';
+import {createTestEntrypoints} from 'nuss/testing';
 
 import {callable} from 'nuss/ioc/create';
 import {methodDecorator} from 'nuss/ioc/decorators';
@@ -50,7 +50,7 @@ class Service {
 
 
 describe('@worker(), @workerContext()', ()=> {
-    let [spammer] = getEntrypoints(Service);
+    let [spammer] = createTestEntrypoints(Service);
 
     it('should invoke service handler method via default worker', ()=> {
         let [msg, ctxValue] = spammer.defaultSpam('ni');

@@ -4,6 +4,29 @@ import {dependencyDecorator} from '../ioc/decorators';
 import {config} from '../config';
 import {logger} from '../logging';
 
+
+// TODO: needs to be provided by container
+const QUEUE_CACHE = new Map();
+
+
+export async function getQueueUrl(queue, sqs) {
+    let task = QUEUE_CACHE.get(queue);
+
+    if (task !== undefined) {
+        let data = await task;
+
+        return data.QueueUrl;
+    }
+
+    task = sqs.getQueueUrl({QueueName: queue});
+    QUEUE_CACHE.set(queue, task);
+
+    let data = await task;
+
+    return data.QueueUrl;
+}
+
+
 class AsyncSQS {
 
     @config('accessKeyId')

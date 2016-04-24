@@ -2,7 +2,7 @@ import {setContext} from './context';
 import {DefaultWeakMap} from '../default-maps';
 
 const SPECIALS = new DefaultWeakMap(()=> ({}));
-
+const BOUND_INSTANCE = Symbol('callable-instance');
 
 export function callable(proto, name, descr) {
     SPECIALS.get(proto).func = descr.value;
@@ -21,6 +21,15 @@ export function isFactory(cls) {
     return SPECIALS.get(cls.prototype).fac !== undefined;
 }
 
+export function getBoundObject(func) {
+    return func[BOUND_INSTANCE];
+}
+
+export function bind(func, obj) {
+    func = func.bind(obj);
+    func[BOUND_INSTANCE] = obj;
+    return func;
+}
 
 export function createInstance(cls, args, ctx) {
     let Class = class extends cls {
@@ -44,7 +53,7 @@ export function create(cls, args=[], ctx) {
     if (fac !== undefined) {
         obj = fac.call(obj, ctx); /* eslint prefer-reflect: 0 */
     } else if (func !== undefined) {
-        obj = func.bind(obj);
+        obj = bind(func, obj);
         // TODO: overwrite constructor property or even Object.setPrototypeOf?
         setContext(obj, ctx);
     }

@@ -1,6 +1,6 @@
 import {timer} from 'nuss/timer';
 import {http} from 'nuss/http';
-import {consumer, publisher} from 'nuss/messaging';
+import {consumer, publisher} from 'nuss/aws';
 import {logger} from 'nuss/logging';
 import {workerContext} from 'nuss/worker';
 import {config} from 'nuss/config';

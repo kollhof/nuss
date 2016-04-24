@@ -85,7 +85,6 @@ describe('HttpServer', ()=> {
 
         expect(nodeServer.listen)
             .to.have.been
-            .calledOnce
             .calledWith(server.port);
 
         let [, onListening] = nodeServer.listen.getCall(0).args;
@@ -98,14 +97,12 @@ describe('HttpServer', ()=> {
     it('should manage connections', ()=> {
         expect(nodeServer.on)
             .to.have.been
-            .calledOnce
             .calledWithMatch('connection', match.instanceOf(Function));
 
         let [, onConnection] = nodeServer.on.getCall(0).args;
         onConnection(conn);
 
         expect(conn.on)
-            .calledOnce
             .calledWithMatch('close', match.instanceOf(Function));
     });
 
@@ -115,12 +112,10 @@ describe('HttpServer', ()=> {
 
         expect(nodeServer.close)
             .to.have.been
-            .calledOnce
             .calledWithMatch(match.instanceOf(Function));
 
         expect(conn.setTimeout)
             .to.have.been
-            .calledOnce
             .calledWithMatch(CONNECTION_TIMEOUT, match.instanceOf(Function));
 
         let [onClosed] = nodeServer.close.getCall(0).args;
@@ -243,7 +238,6 @@ describe('HttpRoute()', ()=> {
     it('should register root with server', ()=> {
         expect(server.addRoute)
             .to.have.been
-            .calledOnce
             .calledWithMatch(GET, '/foobar/spam', match.instanceOf(Function));
     });
 

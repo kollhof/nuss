@@ -1,5 +1,5 @@
 import {describe, it, expect} from './testing';
-import {getEntrypoints} from 'nuss/testing';
+import {createTestEntrypoints} from 'nuss/testing';
 import {methodDecorator} from 'nuss/ioc/decorators';
 import {handler} from 'nuss/handler';
 
@@ -26,7 +26,7 @@ class Service {
 
 describe('@handler()', ()=> {
     it('should create service instance and bind handler method', ()=> {
-        let [spammer] = getEntrypoints(Service);
+        let [spammer] = createTestEntrypoints(Service);
 
         let [serviceInstance, ham] = spammer.invokeHandler('ham');
 

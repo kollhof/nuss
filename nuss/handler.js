@@ -11,7 +11,7 @@ export class Handler {
 
     @factory
     getHandler({target}) {
-        let log = this.log.timeit();
+        let {log} = this; //this.log.timeit();
 
         let ctx = getDecoratedMethodContext(target);
 
@@ -22,10 +22,10 @@ export class Handler {
         // }
 
         log.debug`creating handler`;
-        let hndlr = createHandler(ctx.decoration, target);
+        let handlerMethod = createHandler(ctx.decoration, target);
         log.debug`created handler in ${log.elapsed} ms`;
 
-        return hndlr;
+        return handlerMethod;
     }
 
     @callable

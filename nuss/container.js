@@ -141,7 +141,7 @@ export class Container {
     }
 
     @provide(worker)
-    worker(decoration, target) {
+    getNewWorker(decoration, target) {
         return this.spawnWorker.bind(this, decoration, target);
     }
 }
@@ -152,4 +152,3 @@ export function container(proto, name, descr) {
         dependencyClass: Container
     })(proto, name, descr);
 }
-

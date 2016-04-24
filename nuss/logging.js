@@ -112,7 +112,6 @@ function getNamePath(obj) {
         obj = ctx.target;
         ctx = getContext(obj);
     }
-
     return `${names.join('-')}`;
 }
 
