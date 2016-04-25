@@ -30,29 +30,31 @@ class Service {
 }
 
 describe('@consumer()', ()=> {
-    let testConsumer = null;
     let sqs = null;
+    let subjects = null;
 
     beforeEach(async ()=> {
         spam = stub();
         spamCtx = stub();
-        let subjects = createTestSubjects(Service, testOptions);
-
-        [testConsumer] = subjects(consumer);
+        subjects = createTestSubjects(Service, testOptions);
         [sqs] = subjects(asyncSQS);
 
         sqs.getQueueUrl.returns({QueueUrl: 'test-queue-url'});
     });
 
     afterEach(async ()=> {
-        await testConsumer.stop();
+        await subjects.stop();
     });
+
+    async function messagesReceived() {
+        await subjects.start();
+        await spyCalled(sqs.receiveMessage);
+        await subjects.stop();
+    }
 
 
     it('should start and stop polling messages', async ()=> {
-        await testConsumer.start();
-        await spyCalled(sqs.receiveMessage);
-        await testConsumer.stop();
+        await messagesReceived();
 
         expect(sqs.receiveMessage)
             .to.have.been
@@ -73,9 +75,7 @@ describe('@consumer()', ()=> {
                 }]
             });
 
-        await testConsumer.start();
-        await spyCalled(sqs.receiveMessage);
-        await testConsumer.stop();
+        await messagesReceived();
 
         expect(spam)
             .to.have.been
@@ -100,9 +100,7 @@ describe('@consumer()', ()=> {
             });
         spam.throws(new Error('unable to handle message'));
 
-        await testConsumer.start();
-        await spyCalled(sqs.receiveMessage);
-        await testConsumer.stop();
+        await messagesReceived();
 
         expect(spam)
             .to.have.been
@@ -129,9 +127,7 @@ describe('@consumer()', ()=> {
                 }]
             });
 
-        await testConsumer.start();
-        await spyCalled(sqs.receiveMessage);
-        await testConsumer.stop();
+        await messagesReceived();
 
         expect(spamCtx)
             .to.have.been
@@ -153,9 +149,7 @@ describe('@consumer()', ()=> {
                 }]
             });
 
-        await testConsumer.start();
-        await spyCalled(sqs.receiveMessage);
-        await testConsumer.stop();
+        await messagesReceived();
 
         expect(spam)
             .to.have.been

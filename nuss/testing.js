@@ -7,7 +7,7 @@ import {
 import {createInstance, isCallable} from './ioc/create';
 import {worker, workerContext} from './worker';
 import {handler} from './handler';
-import {TasksAndIO} from './async';
+import {TasksAndIO, all} from './async';
 import {concat} from './iter';
 import {DefaultMap} from './default-maps';
 
@@ -35,6 +35,7 @@ export class TestContainer {
         this.ecxludedDecorators = new Set([config]);
         this.rawConfigData = confData;
         this.subjects = new DefaultMap(()=> []);
+        this.entrypoints = [];
     }
 
     @provide(getImplementation)
@@ -69,7 +70,7 @@ export class TestContainer {
     }
 
     createTestSubjects({exclude=[]}) {
-        let {ecxludedDecorators, cls} = this;
+        let {ecxludedDecorators, cls, entrypoints, start, stop} = this;
 
         exclude = concat(exclude, HANDLER_EXCLUDES, decorators(cls));
 
@@ -77,13 +78,37 @@ export class TestContainer {
             ecxludedDecorators.add(decorator);
         }
 
-        let entrypoints = [];
         for (let decoration of getDecoratedMethods(cls)) {
             let ep = getImplementation(decoration, this);
             entrypoints.push(ep);
         }
 
-        return this.getSubjects.bind(this);
+        let subj = this.getSubjects.bind(this);
+        subj.start = start.bind(this);
+        subj.stop = stop.bind(this);
+        return subj;
+    }
+
+    async start() {
+        let {entrypoints} = this;
+
+        let tasks = [];
+        for (let ep of entrypoints) {
+            tasks.push(ep.start());
+        }
+
+        await all(tasks);
+    }
+
+    async stop() {
+        let {entrypoints} = this;
+
+        let tasks = [];
+        for (let ep of entrypoints) {
+            tasks.push(ep.stop());
+        }
+
+        await all(tasks);
     }
 
     getSubjects(decoratorOrClass) {

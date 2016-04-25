@@ -41,21 +41,22 @@ class Service {
 
 describe('@http()', ()=> {
     let subjects = createTestSubjects(Service, testOptions);
-    let [spamRoute] = subjects(http);
-    let [stubNodeServer, stubNodeServer2] = subjects(nodeServer);
-    //let {server: stubNodeServer} = spamRoute.server;
+    let [nodeSrv] = subjects(nodeServer);
+    let [httpServer1, httpServer2] = subjects(httpServer);
 
-    it('should start and stop server once each', async ()=> {
-        spamRoute.start();
-        await spamRoute.start();
-        expect(stubNodeServer.listen)
+    it('should share a single httpServer', ()=> {
+        expect(httpServer1).to.equal(httpServer2);
+    });
+
+    it('should start and stop nodeSrv once each', async ()=> {
+        await subjects.start();
+        expect(nodeSrv.listen)
             .to.have.been
             .calledOnce
             .calledWithExactly(TEST_PORT, match.func);
 
-        spamRoute.stop();
-        await spamRoute.stop();
-        expect(stubNodeServer.close)
+        await subjects.stop();
+        expect(nodeSrv.close)
             .to.have.been
             .calledOnce
             .calledWithExactly();
@@ -69,8 +70,8 @@ describe('@http()', ()=> {
 
         let resp = createResponse();
 
-        await spamRoute.start();
-        stubNodeServer.listen.callArgWith(REQUEST_HANDLER, req, resp);
+        await subjects.start();
+        nodeSrv.listen.callArgWith(REQUEST_HANDLER, req, resp);
 
         expect(handleSpam)
             .to.have.been
@@ -93,8 +94,8 @@ describe('@http()', ()=> {
             status: spy()
         };
 
-        await spamRoute.start();
-        stubNodeServer.listen.callArgWith(REQUEST_HANDLER, req, resp);
+        await subjects.start();
+        nodeSrv.listen.callArgWith(REQUEST_HANDLER, req, resp);
         //TODO: should call spamRoute.stop() to have it wait for req processing
         //to complete
         await spyCalled(resp.send);
