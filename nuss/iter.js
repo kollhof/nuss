@@ -25,6 +25,12 @@ export function last(items) {
 }
 
 
+export function* concat(...iterables) {
+    for (let iterable of iterables) {
+        yield * iterable;
+    }
+}
+
 export function array(items) {
     return Array.from(items);
 }

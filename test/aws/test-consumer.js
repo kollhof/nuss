@@ -1,42 +1,45 @@
 import {describe, it, expect, beforeEach, afterEach, stub} from '../testing';
-import {consumer} from 'nuss/aws';
-import {createTestEntrypoints, spyCalled} from 'nuss/testing';
+import {createTestSubjects, spyCalled} from 'nuss/testing';
 import {workerContext} from 'nuss/worker';
 
+import {consumer} from 'nuss/aws';
+import {asyncSQS} from 'nuss/aws/sqs';
 
-const CONSUMER_CONFIG = {
-    queues: {
-        'spam-queue': {
-            name: 'aws-queue-name'
+let spam = stub();
+let spamCtx = stub();
 
+let testOptions = {
+    config: {
+        queues: {
+            'spam-queue': {
+                name: 'aws-queue-name'
+            }
         }
     }
 };
 
+class Service {
+    @workerContext
+    ctx
+
+    @consumer('spam-queue')
+    async spam(...args) {
+        spamCtx(this.ctx.getHeader('trace'));
+        await spam(...args);
+    }
+}
 
 describe('@consumer()', ()=> {
-    let spam = stub();
-    let spamCtx = stub();
     let testConsumer = null;
     let sqs = null;
-
-    class Service {
-        @workerContext
-        ctx
-
-        @consumer('spam-queue')
-        async spam(...args) {
-            spamCtx(this.ctx.getHeader('trace'));
-            await spam(...args);
-        }
-    }
 
     beforeEach(async ()=> {
         spam = stub();
         spamCtx = stub();
+        let subjects = createTestSubjects(Service, testOptions);
 
-        [testConsumer] = createTestEntrypoints(Service, CONSUMER_CONFIG);
-        ({sqs} = testConsumer);
+        [testConsumer] = subjects(consumer);
+        [sqs] = subjects(asyncSQS);
 
         sqs.getQueueUrl.returns({QueueUrl: 'test-queue-url'});
     });

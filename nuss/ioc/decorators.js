@@ -18,6 +18,11 @@ export function* decorations(cls) {
     yield * getDecoratedMethods(cls);
 }
 
+export function* decorators(cls) {
+    for (let {decorator} of decorations(cls)) {
+        yield decorator;
+    }
+}
 
 export function methodDecorator(decorator, decoratorDescr) {
     return (proto, name, descr)=> {

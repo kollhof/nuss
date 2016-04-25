@@ -12,7 +12,7 @@ export function getContext(obj) {
 
 
 export function* getContexts(obj) {
-    let ctx = getContext(obj) || {target: obj};
+    let ctx = getContext(obj);
 
     while (ctx !== undefined) {
         yield ctx;
@@ -32,7 +32,7 @@ export function getWorkerContext(wrk) {
 
 
 export function getDecoratedMethodContext(obj) {
-    let ctx = getContext(obj) || {target: obj};
+    let ctx = getContext(obj) //TODO: || {target: obj};
 
     while (ctx !== undefined) {
         if (ctx.decoration.decoratedMethod !== undefined) {

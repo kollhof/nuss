@@ -1,37 +1,44 @@
 import {describe, it, expect, beforeEach} from '../testing';
-import {getBoundObject} from 'nuss/ioc/create';
+import {createTestSubjects} from 'nuss/testing';
+import {workerContext} from 'nuss/worker';
+
 import {publisher} from 'nuss/aws';
-import {createTestHandler} from 'nuss/testing';
+import {asyncSQS} from 'nuss/aws/sqs';
 
 
-const PUBLISHER_CONFIG = {
-    queues: {
-        'spam-queue': {
-            name: 'aws-queue-name'
-
+const testOptions = {
+    config: {
+        queues: {
+            'spam-queue': {
+                name: 'aws-queue-name'
+            }
         }
     }
 };
 
-describe('@publisher()', ()=> {
+class Service {
+    @publisher('spam-queue')
+    publish
 
-    class Service {
-        @publisher('spam-queue')
-        publish
+    @workerContext
+    ctx
 
-        async spam(msg) {
-            await this.publish(msg);
-        }
+    async spam(msg, headers={}) {
+        // TODO: unsupported interface
+        this.ctx.headers = headers;
+        await this.publish(msg);
     }
+}
 
+describe('@publisher()', ()=> {
     let service = null;
     let sqs = null;
-    let workerCtx = null;
 
     beforeEach(()=> {
-        service = createTestHandler(Service, PUBLISHER_CONFIG);
+        let subjects = createTestSubjects(Service, testOptions);
 
-        ({workerCtx, sqs} = getBoundObject(service.publish));
+        [service] = subjects(Service);
+        [sqs] = subjects(asyncSQS);
 
         sqs.getQueueUrl.returns({QueueUrl: 'test-queue-url'});
     });
@@ -56,9 +63,7 @@ describe('@publisher()', ()=> {
     });
 
     it('should include headers from worker-context', async ()=> {
-        workerCtx.getHeader.returns('trace-id');
-
-        await service.spam('ham & eggs');
+        await service.spam('ham & eggs', {trace: 'trace-id'});
 
         expect(sqs.sendMessage)
             .to.have.been

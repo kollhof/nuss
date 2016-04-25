@@ -1,5 +1,5 @@
 import {DefaultWeakMap} from '../default-maps';
-import {create} from './create';
+import {create, bind} from './create';
 import {getContext} from './context';
 
 const IMPLEMENTATION_PROVIDERS = new DefaultWeakMap(()=> new Map());
@@ -7,8 +7,9 @@ const IMPLEMENTATION_PROVIDERS = new DefaultWeakMap(()=> new Map());
 
 export function createHandler(decoration, target) {
     let {decoratedClass, decoratedMethod} = decoration;
+
     let obj = create(decoratedClass, [], {decoration, target});
-    return decoratedMethod.bind(obj);
+    return bind(decoratedMethod, obj);
 }
 
 export function createImplementation(decoration, target) {
@@ -26,7 +27,7 @@ export function provide(decorator) {
 
 
 export function findProvider(decorator, target) {
-    let ctx = getContext(target);
+    let ctx = getContext(target) || {target};
 
     while (ctx !== undefined) {
         let provider = ctx.target;

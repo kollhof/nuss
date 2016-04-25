@@ -1,13 +1,32 @@
-import {getImplementation, provide} from './ioc/resolve';
-import {getDecoratedMethods, decorations} from './ioc/decorators';
+import {stub, createStubInstance} from 'sinon';
+
+import {getImplementation, createImplementation, provide} from './ioc/resolve';
+import {
+    getDecoratedMethods, decorators, methodDecorator
+} from './ioc/decorators';
 import {createInstance, isCallable} from './ioc/create';
 import {worker, workerContext} from './worker';
 import {handler} from './handler';
 import {TasksAndIO} from './async';
+import {concat} from './iter';
+import {DefaultMap} from './default-maps';
 
 import {configData, config} from './config';
 import {flattenConfigData} from './config/loader';
-import {stub, createStubInstance} from 'sinon';
+
+
+const HANDLER_EXCLUDES=[worker, workerContext, handler];
+
+class TestCaller {
+    @worker
+    invoke
+}
+
+export function testCaller(proto, name, descr) {
+    return methodDecorator(testCaller, {
+        dependencyClass: TestCaller
+    })(proto, name, descr);
+}
 
 
 export class TestContainer {
@@ -15,23 +34,25 @@ export class TestContainer {
         this.cls = cls;
         this.ecxludedDecorators = new Set([config]);
         this.rawConfigData = confData;
+        this.subjects = new DefaultMap(()=> []);
     }
 
     @provide(getImplementation)
-    resolveDependency(decoration) {
+    resolveDependency(decoration, target) {
         let {ecxludedDecorators} = this;
-        let {decoratorDescr} = decoration;
-        let {dependencyClass} = decoratorDescr;
+        let {decorator, decoratorDescr: {dependencyClass}} = decoration;
 
-        if (ecxludedDecorators.has(decoration.decorator)) {
-            return;
+        let obj = null;
+
+        if (ecxludedDecorators.has(decorator)) {
+            obj = createImplementation(decoration, target);
+        } else if (isCallable(dependencyClass)) {
+            obj = stub();
+        } else {
+            obj = createStubInstance(dependencyClass);
         }
 
-        if (isCallable(dependencyClass)) {
-            return stub();
-        }
-
-        let obj = createStubInstance(dependencyClass);
+        this.subjects.get(decorator).push(obj);
         return obj;
     }
 
@@ -47,54 +68,40 @@ export class TestContainer {
         return confData;
     }
 
-    createTestSubject(args) {
-        return createInstance(this.cls, args, {target: this});
-    }
+    createTestSubjects({exclude=[]}) {
+        let {ecxludedDecorators, cls} = this;
 
-    createTestHandler() {
-        for (let decoration of decorations(this.cls)) {
-            this.ecxludedDecorators.add(decoration.decorator);
-        }
+        exclude = concat(exclude, HANDLER_EXCLUDES, decorators(cls));
 
-        return createInstance(this.cls, [], {target: this});
-    }
-
-    createEntrypoints() {
-        let {ecxludedDecorators} = this;
-
-        ecxludedDecorators.add(worker);
-        ecxludedDecorators.add(workerContext);
-        ecxludedDecorators.add(handler);
-
-        for (let decoration of decorations(this.cls)) {
-            ecxludedDecorators.add(decoration.decorator);
+        for (let decorator of exclude) {
+            ecxludedDecorators.add(decorator);
         }
 
         let entrypoints = [];
-
-        for (let decoration of getDecoratedMethods(this.cls)) {
+        for (let decoration of getDecoratedMethods(cls)) {
             let ep = getImplementation(decoration, this);
             entrypoints.push(ep);
         }
 
-        return entrypoints;
+        return this.getSubjects.bind(this);
+    }
+
+    getSubjects(decoratorOrClass) {
+        let {cls, subjects} = this;
+
+        if (decoratorOrClass === cls) {
+            let obj = createInstance(cls, [], {target: this});
+            subjects.get(decoratorOrClass).push(obj);
+        }
+        return subjects.get(decoratorOrClass);
     }
 }
 
-export function createMocked(cls, args=[], confData={}) {
-    let container = new TestContainer(cls, confData);
-    return container.createTestSubject(args);
+export function createTestSubjects(cls, options={}) {
+    let container = new TestContainer(cls, options.config);
+    return container.createTestSubjects(options);
 }
 
-export function createTestHandler(cls, confData={}) {
-    let container = new TestContainer(cls, confData);
-    return container.createTestHandler();
-}
-
-export function createTestEntrypoints(cls, confData={}) {
-    let container = new TestContainer(cls, confData);
-    return container.createEntrypoints();
-}
 
 export async function spyCalled(spy, numCalls) {
     let {behaviors} = spy;

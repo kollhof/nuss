@@ -105,7 +105,10 @@ class Consumer {
                 MaxNumberOfMessages: 10,
                 MessageAttributeNames: ['trace']  // TODO: get names from ctx
             });
-            return data.Messages || [];
+
+            let {Messages: messages=[]} = data;
+
+            return messages;
         } catch (err) {
             if (!this.stopped) {
                 log.error`error fetching messages: ${err} `;

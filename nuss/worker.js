@@ -29,13 +29,15 @@ export function worker(wokerClassOrProto, name, descr) {
 function findWorker(ctx) {
     let wrk = ctx.target;
 
-    while (ctx !== undefined) {
+    while (ctx !== undefined && ctx.decoration !== undefined) {
         if (ctx.decoration.decorator === worker) {
-            return wrk;
+            break;
         }
         wrk = ctx.target;
         ctx = getContext(wrk);
     }
+
+    return wrk;
 }
 
 export class WorkerContext {
