@@ -23,10 +23,10 @@ class Publisher {
 
     @callable
     async publish(msg) {
-        let {log, workerCtx, sqs} = this;
+        let {log, workerCtx, sqs, queue} = this;
 
-        log.debug`publish ${msg} -> ${this.queue}`;
-        let queueUrl = await sqs.getQueueUrl({QueueName: this.queue});
+        log.debug`publish ${msg} -> ${queue}`;
+        let queueUrl = await sqs.getQueueUrl({QueueName: queue});
 
         let attrs = {};
 

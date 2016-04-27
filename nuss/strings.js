@@ -9,18 +9,24 @@ export function indenter(increment='    ', padding='') {
 }
 
 
-// export function ltrim(parts, ...args) {
-//     let stripLen = 0;
+export function ltrim(parts, ...args) {
+    let stripLen = 0;
+    let str = String.raw({raw: parts}, ...args)
+        .split('\n');
 
-//     return String.raw({raw: parts}, ...args)
-//         .split('\n')
-//         .map((lne, idx)=> {
-//             if (idx === 1) {
-//                 let len = lne.length;
-//                 stripLen = len - lne.replace(/^\s+/, '').length;
-//             }
 
-//             return lne.slice(stripLen);
-//         })
-//         .join('\n');
-// }
+    str = str.map((lne, idx)=> {
+        if (stripLen === 0 && idx > 1 && lne.length > 0) {
+            let len = lne.length;
+            stripLen = len - lne.replace(/^\s+/, '').length;
+        }
+
+        return lne.slice(stripLen);
+    });
+
+    if (str[0] === '') {
+        str.shift();
+    }
+
+    return str.join('\n');
+}

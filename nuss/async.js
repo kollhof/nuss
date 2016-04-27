@@ -153,17 +153,29 @@ export function wrapNodeStyle(thisObj, func) {
 }
 
 const WRAPPED_FUNCS = new WeakSet();
+const WRAPPED_OBJ_PROVIDER = new WeakMap();
 
 export function isWrapped(func) {
     return WRAPPED_FUNCS.has(func);
+}
+
+
+export function wraps(wrapped) {
+    return (cls)=> {
+        // TODO: really use name to get the value in @wrap()?
+        WRAPPED_OBJ_PROVIDER.set(cls.prototype, wrapped);
+        return cls;
+    };
 }
 
 export function wrap(proto, name, descr) {
 
     // TODO: does this conform to the spec?
     descr.value = function(...args) {
-        let wrappedObj = this.wrapped;
-        return wrapNodeStyle(wrappedObj, wrappedObj[name])(...args);
+        let wrappedProvider = WRAPPED_OBJ_PROVIDER.get(proto);
+        let wrappedObj = this[wrappedProvider];
+        let func = wrapNodeStyle(wrappedObj, wrappedObj[name]);
+        return func(...args);
     };
 
     WRAPPED_FUNCS.add(descr.value);

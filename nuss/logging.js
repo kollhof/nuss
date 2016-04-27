@@ -13,7 +13,7 @@ import {
 } from './colorize';
 
 
-const COLOR_MAP = {
+export const COLOR_MAP = {
     worker: colorize(Green),
     DEBUG: colorize(Yellow, Faint),
     ERROR: colorize(intense(Red), Bold),
@@ -99,12 +99,12 @@ function getNamePath(obj) {
     let names = [];
     let ctx = getContext(obj);
 
-    if (ctx === undefined) {
+    if (ctx === undefined || ctx.decoration === undefined) {
         let clr = COLOR_MAP.name;
         names.push(clr`${obj.constructor.name}`);
     }
 
-    while (ctx !== undefined) {
+    while (ctx !== undefined && ctx.decoration !== undefined) {
         let name = getName(obj, ctx);
 
         names.unshift(name);
@@ -116,14 +116,14 @@ function getNamePath(obj) {
 }
 
 function formatItem(obj) {
-    if (obj === null) {
-
-    } else if (getContext(obj) !== undefined) {
-        return getNamePath(obj);
-    } else if (obj instanceof Function) {
-        return colorize(Cyan)`${obj.name}()`;
-    } else if (obj instanceof Error) {
-        return obj.stack;
+    if (obj !== null) {
+        if (getContext(obj) !== undefined) {
+            return getNamePath(obj);
+        } else if (obj instanceof Function) {
+            return colorize(Cyan)`${obj.name}()`;
+        } else if (obj instanceof Error) {
+            return obj.stack;
+        }
     }
     return inspect(obj, {colors: true, depth: 0});
 }
@@ -184,15 +184,22 @@ export class Handler {
     // @config('class', 'handler class')
     // cls='nuss/logging/StreamHandler'
 
-    @config('arguments')
-    args=['process.stdout']
+    @config('output stream')
+    stream='stderr'
 
     @formatter
     format
 
     constructor() {
-        /* global process: true */
-        this.stream = process.stderr;
+
+        let {stream} = this;
+
+        if (stream === 'stderr' || stream === 'stdout') {
+            /* global process: true */
+            stream = process[stream];
+        }
+
+        this.stream = stream;
     }
 
     handle(level, target, parts, args) {

@@ -1,8 +1,10 @@
 import {SQS} from 'aws-sdk';
 
 import {dependencyDecorator} from '../ioc/decorators';
+import {factory} from '../ioc/create';
 import {config} from '../config';
 import {logger} from '../logging';
+import {wrap, wraps} from '../async';
 
 
 // TODO: needs to be provided by container
@@ -27,7 +29,9 @@ export async function getQueueUrl(queue, sqs) {
 }
 
 
+@wraps('sqs')
 class AsyncSQS {
+    SQSClass=SQS
 
     @config('accessKeyId')
     accessKeyId
@@ -42,8 +46,6 @@ class AsyncSQS {
     log
 
     constructor() {
-        let {secretAccessKey, accessKeyId, region} = this;
-        this.sqs = new SQS({secretAccessKey, accessKeyId, region});
         this.receiveRequests = new Set();
     }
 
@@ -53,35 +55,37 @@ class AsyncSQS {
         }
     }
 
-    createQueue(...args) {
-        return this._perform('createQueue', args);
+    get sqs() {
+        let {secretAccessKey, accessKeyId, region, SQSClass, _sqs} = this;
+
+        // TODO: issue with sinon calling the getter when creating stubs
+        if (_sqs === undefined && SQSClass !== undefined) {
+            this._sqs = new SQSClass({secretAccessKey, accessKeyId, region});
+        }
+        return this._sqs;
     }
 
-    getQueueUrl(...args) {
-        return this._perform('getQueueUrl', args);
-    }
+    @wrap
+    createQueue
 
-    sendMessage(...args) {
-        return this._perform('sendMessage', args);
-    }
+    @wrap
+    sendMessage
+
+    @wrap
+    deleteMessage
+
+    @wrap
+    getQueueUrl
 
     receiveMessage(...args) {
-        return this._perform('receiveMessage', args, this.receiveRequests);
-    }
-
-    deleteMessage(...args) {
-        return this._perform('deleteMessage', args);
-    }
-
-    _perform(name, args, requests) {
-        let sqs = this.sqs;
-        let handler = sqs[name].bind(sqs);
+        let {sqs, receiveRequests} = this;
+        let {receiveMessage} = sqs;
+        receiveMessage = receiveMessage.bind(sqs);
 
         return new Promise((resolve, reject)=> {
-            let req = handler(...args, (err, data)=> {
-                if (requests !== undefined) {
-                    requests.delete(req);
-                }
+            let req = receiveMessage(...args, (err, data)=> {
+                receiveRequests.delete(req);
+
                 if (err) {
                     reject(err);
                 } else {
@@ -89,9 +93,7 @@ class AsyncSQS {
                 }
             });
 
-            if (requests !== undefined) {
-                requests.add(req);
-            }
+            receiveRequests.add(req);
         });
     }
 }

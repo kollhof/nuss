@@ -10,6 +10,11 @@ reporting:
     - html
   report-config:
       json: {file: coverage.json}
+  watermarks:
+    statements: [90, 100]
+    lines: [90, 100]
+    functions: [90, 100]
+    branches: [90, 100]
 
 check:
     global:

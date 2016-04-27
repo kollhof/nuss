@@ -1,6 +1,8 @@
 import {describe, it, expect} from './testing';
 
-import {sleep, defer, all, SomeRejected, TaskSet, wrap} from 'nuss/async';
+import {
+    sleep, defer, all, SomeRejected, TaskSet, wrap, wraps
+} from 'nuss/async';
 
 const DEFER_RESULT = 1234;
 
@@ -134,6 +136,7 @@ describe('class TaskSet()', ()=> {
 
 
 describe('@wrap', ()=> {
+    @wraps('wrapped')
     class Foo {
         wrapped = {
             spam(arg, raise, handle) {

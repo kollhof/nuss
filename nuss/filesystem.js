@@ -1,17 +1,18 @@
 import fs from 'fs';
 
 import {dependencyDecorator} from './ioc/decorators';
-import {wrap} from './async';
+import {wrap, wraps} from './async';
 
 
+@wraps('fs')
 export class FileSystem {
-    wrapped=fs
+    fs=fs
 
     @wrap
     readFile
 
     readFileSync(...args) {
-        return this.wrapped.readFileSync(...args);
+        return this.fs.readFileSync(...args);
     }
 
 }
@@ -19,6 +20,6 @@ export class FileSystem {
 
 export function fileSystem(proto, name, descr) {
     return dependencyDecorator(fileSystem, {
-        dependencyClass: FileSystem,
+        dependencyClass: FileSystem
     })(proto, name, descr);
 }

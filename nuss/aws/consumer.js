@@ -93,6 +93,16 @@ class Consumer {
         log.debug`consumer started`;
     }
 
+    async stop() {
+        let {log, sqs, activeTasks} = this;
+
+        log.debug`stopping consumer`;
+        this.stopped = true;
+        await sqs.stop();
+        await all(activeTasks);
+        log.debug`consumer stopped`;
+    }
+
     async fetchMessages() {
         let {log, queueUrl, sqs} = this;
 
@@ -143,16 +153,6 @@ class Consumer {
         }
 
         log.debug`stopped polling`;
-    }
-
-    async stop() {
-        let {log, sqs, activeTasks} = this;
-
-        log.debug`stopping consumer`;
-        this.stopped = true;
-        sqs.stop();
-        await all(activeTasks);
-        log.debug`consumer stopped`;
     }
 }
 

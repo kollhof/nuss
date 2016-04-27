@@ -1,9 +1,7 @@
 import {stub, createStubInstance} from 'sinon';
 
 import {getImplementation, createImplementation, provide} from './ioc/resolve';
-import {
-    getDecoratedMethods, decorators, methodDecorator
-} from './ioc/decorators';
+import {getDecoratedMethods, decorators} from './ioc/decorators';
 import {createInstance, isCallable} from './ioc/create';
 import {worker, workerContext} from './worker';
 import {handler} from './handler';
@@ -16,17 +14,6 @@ import {flattenConfigData} from './config/loader';
 
 
 const HANDLER_EXCLUDES=[worker, workerContext, handler];
-
-class TestCaller {
-    @worker
-    invoke
-}
-
-export function testCaller(proto, name, descr) {
-    return methodDecorator(testCaller, {
-        dependencyClass: TestCaller
-    })(proto, name, descr);
-}
 
 
 export class TestContainer {

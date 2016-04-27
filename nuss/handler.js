@@ -15,12 +15,6 @@ export class Handler {
 
         let ctx = getDecoratedMethodContext(target);
 
-        // TODO: required if testing method decorators without
-        // using createMocked()
-        // if (ctx === undefined) {
-        //     return;
-        // }
-
         log.debug`creating handler`;
         let handlerMethod = createHandler(ctx.decoration, target);
         log.debug`created handler in ${log.elapsed} ms`;

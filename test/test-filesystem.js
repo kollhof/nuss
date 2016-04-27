@@ -11,7 +11,7 @@ describe('FileSystem', ()=> {
 
     beforeEach(()=> {
         fs = new FileSystem();
-        fs.wrapped = {
+        fs.fs = {
             readFileSync: stub().returns(fileData)
         };
     });
@@ -21,7 +21,7 @@ describe('FileSystem', ()=> {
 
         expect(result).to.equal(fileData);
 
-        expect(fs.wrapped.readFileSync)
+        expect(fs.fs.readFileSync)
             .to.have.been
             .calledOnce
             .calledWithExactly('path/to/file');
