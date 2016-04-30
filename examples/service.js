@@ -42,17 +42,17 @@ export class Foobar {
         log.debug`------------------`;
     }
 
-    // @timer(TIMER_SLEEP_TIME)
-    // async handle1() {
-    //     let {log} = this;
-    //     let cntr = inc();
+    @timer(TIMER_SLEEP_TIME)
+    async handle1() {
+        let {log} = this;
+        let cntr = inc();
 
-    //     log.debug`-----${cntr}-----`;
-    //     log.debug`config: ${this.spam}`;
-    //     await this.shrub({ni: cntr});
-    //     log.debug`ctx headers ${this.workerCtx.headers}`;
-    //     log.debug`-----------------`;
-    // }
+        log.debug`-----${cntr}-----`;
+        log.debug`config: ${this.spam}`;
+        await this.shrub({ni: cntr});
+        log.debug`ctx headers ${this.workerCtx.headers}`;
+        log.debug`-----------------`;
+    }
 
     @http('/hello/world')
     async handleHttp(req, resp) {

@@ -25,7 +25,7 @@ test:
 
 
 cover:
-	NODE_PATH=. node -r babel-register \
+	NODE_PATH=. BABEL_ENV=instanbul node -r babel-register \
 		$(NODE_BIN)/babel-istanbul cover \
 		$(NODE_BIN)/_mocha
 

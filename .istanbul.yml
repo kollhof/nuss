@@ -2,6 +2,7 @@ instrumentation:
   root: ./nuss
   es-modules: true
   include-all-sources: true
+  compact: false
 
 reporting:
   dir: ./build/cov

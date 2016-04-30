@@ -1,4 +1,4 @@
-FROM node:5.9
+FROM node:6.0
 MAINTAINER Jan Klaas Kollhof
 
 ADD ./.babelrc /nuss-src/
