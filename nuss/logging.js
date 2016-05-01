@@ -2,6 +2,7 @@ import {inspect} from 'util';
 import vm from 'vm';
 
 import {hrtime} from './profiling';
+import {process} from './process';
 import {config} from './config';
 import {Script} from './config/loader';
 import {getContext, getWorkerContext} from './ioc/context';
@@ -87,7 +88,6 @@ function getName(obj, {decoration}) {
     let name = clr`${cls}.${nme}@${dec}`;
 
     if (wrk !== undefined) {
-        clr = COLOR_MAP[dec] || COLOR_MAP.name;
         name += COLOR_MAP.worker`<${wrk.id}>`;
     }
 
@@ -115,7 +115,7 @@ function getNamePath(obj) {
     return `${names.join('-')}`;
 }
 
-function formatItem(obj) {
+function formatItem(obj) { // eslint-disable-line complexity
     if (obj !== null) {
         if (getContext(obj) !== undefined) {
             return getNamePath(obj);
@@ -136,7 +136,7 @@ export class Formatter {
     // colorize=true
 
     @callable
-    format(level, target, parts, args) {
+    format(level, target, parts, args) { // eslint-disable-line max-params
         if (this.formatScript === undefined) {
             // TODO:
             return;
@@ -190,19 +190,21 @@ export class Handler {
     @formatter
     format
 
+    @process
+    process
+
     constructor() {
 
         let {stream} = this;
 
         if (stream === 'stderr' || stream === 'stdout') {
-            /* global process: true */
-            stream = process[stream];
+            stream = this.process[stream];
         }
 
         this.stream = stream;
     }
 
-    handle(level, target, parts, args) {
+    handle(level, target, parts, args) { // eslint-disable-line max-params
         let entry = this.format(level, target, parts, args);
 
         // TODO: how can entry be undefined?

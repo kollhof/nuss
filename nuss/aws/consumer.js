@@ -45,6 +45,7 @@ export class MessageWorker {
             await handle(msg.Body);
         } catch (err) {
             log.error`worker ${err.stack}`;
+
             // TODO: throw err; ?
             return;
         }
@@ -113,7 +114,9 @@ class Consumer {
                 QueueUrl: queueUrl,
                 WaitTimeSeconds: 10,
                 MaxNumberOfMessages: 10,
-                MessageAttributeNames: ['trace']  // TODO: get names from ctx
+
+                // TODO: get names from ctx
+                MessageAttributeNames: ['trace']
             });
 
             let {Messages: messages=[]} = data;

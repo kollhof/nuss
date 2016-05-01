@@ -40,7 +40,7 @@ export function loadConfig(src) {
 }
 
 
-function getSubTreeForRoot(item, path, tree, data) { /* eslint max-params: 0 */
+function getSubTreeForRoot(item, path, tree, data) {
     if (item.root) {
         let nextKey = path
             .slice(path.indexOf(item))

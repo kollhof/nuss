@@ -7,7 +7,7 @@ import {getTargetConfigPath} from './resolve';
 
 export function configData(proto, name, descr) {
     return dependencyDecorator(configData, {
-        dependencyClass: Object,
+        dependencyClass: Object
     })(proto, name, descr);
 }
 
@@ -45,7 +45,7 @@ export function config(key, description) {
         }
 
         let {initializer} = descr;
-        let value = undefined; /* eslint no-undef-init: 0 */
+        let value = undefined; // eslint-disable-line no-undef-init
 
         if (initializer) {
             value = initializer();

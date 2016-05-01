@@ -1,5 +1,5 @@
 import {dependencyDecorator} from './ioc/decorators';
-import {factory, callable} from './ioc/create';
+import {factory} from './ioc/create';
 import {getDecoratedMethodContext} from './ioc/context';
 import {createHandler} from './ioc/resolve';
 import {logger} from './logging';
@@ -11,7 +11,8 @@ export class Handler {
 
     @factory
     getHandler({target}) {
-        let {log} = this; //this.log.timeit();
+        // TODO: this.log.timeit();
+        let {log} = this;
 
         let ctx = getDecoratedMethodContext(target);
 
@@ -21,16 +22,10 @@ export class Handler {
 
         return handlerMethod;
     }
-
-    @callable
-    handle() {
-        //TODO: needed for test-container
-    }
 }
 
 export function handler(proto, name, descr) {
     return dependencyDecorator(handler, {
-        dependencyClass: Handler,
-        factoryClass: Handler //TODO: try different approach
+        dependencyClass: Handler
     })(proto, name, descr);
 }

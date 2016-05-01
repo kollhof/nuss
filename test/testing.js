@@ -6,3 +6,11 @@ import sinonchai from 'sinon-chai';
 chai.use(sinonchai);
 
 export {expect, it, describe, beforeEach, afterEach, spy, mock, stub, match};
+
+
+export class Writer {
+    data=''
+    write(data) {
+        this.data += data;
+    }
+}

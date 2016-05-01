@@ -1,4 +1,6 @@
-import {describe, it, expect} from './testing';
+import {describe, it, expect, Writer} from './testing';
+import {createTestSubjects} from 'nuss/testing';
+
 import {methodDecorator} from 'nuss/ioc/decorators';
 import {ltrim} from 'nuss/strings';
 import {config} from 'nuss/config';
@@ -14,8 +16,8 @@ class Spam {
     @worker
     process
 
-    handleMessage(msg) {
-        return this.process(msg);
+    getConfigs() {
+        return this.process(this.foobar);
     }
 }
 
@@ -26,6 +28,9 @@ function spam(proto, name, descr) {
             root: true,
             key: 'spam',
             description: 'config for @spam()'
+        }, {
+            key: 'eggs',
+            optional: true
         }]
     })(proto, name, descr);
 }
@@ -39,31 +44,44 @@ class Service {
     shrub='ni'
 
     @spam
-    async sleep(msg) {
-        this.log.debug`received ${msg}`;
+    async sleep(foobar) {
+        return [foobar, this.shrub];
     }
 }
 
-class Writer {
-    data=''
-    write(data) {
-        this.data += data;
-    }
-}
+
 let formatScript = new Script('`${shortColoredLevel}:${context}: ${message}`');
 
+
+describe('@config', ()=> {
+    it('should apply config value', async ()=> {
+        let [spammer] = createTestSubjects(Service, {
+            config: {
+                shrub: 'nini',
+                spam: {
+                    foobar: 'ham & eggs'
+                }
+            }
+        })(spam);
+
+        let [foobar, shrub] = await spammer.getConfigs();
+
+        expect(shrub).to.equal('nini');
+        expect(foobar).to.equal('ham & eggs');
+    });
+});
 
 describe('printConfig()', ()=> {
 
     it('should inject configuration', async ()=> {
-        let out =  new Writer();
+        let out = new Writer();
 
         printConfig(Service, out);
 
         expect(out.data).to.be.equal(ltrim`
 
             # Logger configuration
-            # nestable under worker:
+            # nestable under eggs:worker:
             logger:
 
                 # Log level (error, info, debug)
@@ -88,6 +106,7 @@ describe('printConfig()', ()=> {
             spam:
 
                 # Retry count
+                # nestable under eggs:
                 foobar: ham
 
                 # may contain: logger:
@@ -95,12 +114,25 @@ describe('printConfig()', ()=> {
     });
 });
 
-describe('loadConfig()', ()=> {
-    it('should load config', ()=> {
-        let out = new Writer();
+describe('config loader', ()=> {
+    let data = ltrim`
 
-        printConfig(Service, out);
-        let confData = loadConfig(out.data);
+        logger:
+            level: debug
+            handler:
+                stream: stderr
+                formatter:
+                    format: !es ${
+                        "'`${shortColoredLevel}:${context}: ${message}`'"}
+        shrub: ni
+        spam:
+            eggs:
+                foobar: ham
+    `;
+
+
+    it('should load config', ()=> {
+        let confData = loadConfig(data);
 
         expect(confData).to.deep.equal({
             logger: {
@@ -114,28 +146,25 @@ describe('loadConfig()', ()=> {
             },
             shrub: 'ni',
             spam: {
-                foobar: 'ham'
+                eggs: {
+                    foobar: 'ham'
+                }
             }
         });
     });
-});
 
-describe('flattenConfig()', ()=> {
-    it('should load config', ()=> {
-        let out = new Writer();
-
-        printConfig(Service, out);
-        let confData = flattenConfigData(Service, loadConfig(out.data));
+    it('should flatten loaded config', ()=> {
+        let confData = flattenConfigData(Service, loadConfig(data));
 
         expect(confData).to.deep.equal({
             'logger:handler:formatter:format': formatScript,
             'logger:handler:stream': 'stderr',
             'logger:level': 'debug',
             shrub: 'ni',
-            'spam:foobar': 'ham',
-            'spam:worker:logger:handler:formatter:format': formatScript,
-            'spam:worker:logger:handler:stream': 'stderr',
-            'spam:worker:logger:level': 'debug'
+            'spam:eggs:foobar': 'ham',
+            'spam:eggs:worker:logger:handler:formatter:format': formatScript,
+            'spam:eggs:worker:logger:handler:stream': 'stderr',
+            'spam:eggs:worker:logger:level': 'debug'
         });
     });
 

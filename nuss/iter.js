@@ -17,7 +17,7 @@ export function last(items) {
         return items[items.length -1];
     }
 
-    let item = undefined; /* eslint no-undef-init: 0 */
+    let item = undefined; // eslint-disable-line no-undef-init
     for (item of items) {
         // nop
     }

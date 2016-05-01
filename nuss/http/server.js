@@ -74,7 +74,7 @@ export class HttpServer {
     async stopServer() {
         let {log, servers, server} = this;
 
-        //TODO: why ?
+        // TODO: why ?
         servers.delete(this.port);
 
         log.debug`stopping server`;

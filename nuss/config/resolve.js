@@ -3,7 +3,6 @@ import {decorations} from '../ioc/decorators';
 
 
 export function getConfigPath(decoration) {
-    // TODO: istanbul has trouble with thi
     let {config=[]} = decoration.decoratorDescr;
     return config;
 }
@@ -17,11 +16,8 @@ export function* getConfigPaths(cls, parents=[]) {
         if (decoration.decorator.name === 'config') {
             yield decPath;
         } else {
-            let {decoratorDescr} = decoration;
-            if (decoratorDescr !== undefined) {
-                let {dependencyClass} = decoratorDescr;
-                yield * getConfigPaths(dependencyClass, decPath);
-            }
+            let {decoratorDescr: {dependencyClass}} = decoration;
+            yield * getConfigPaths(dependencyClass, decPath);
         }
     }
 }

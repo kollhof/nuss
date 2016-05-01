@@ -1,7 +1,6 @@
 import {SQS} from 'aws-sdk';
 
 import {dependencyDecorator} from '../ioc/decorators';
-import {factory} from '../ioc/create';
 import {config} from '../config';
 import {logger} from '../logging';
 import {wrap, wraps} from '../async';

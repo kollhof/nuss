@@ -23,10 +23,7 @@ export function ltrim(parts, ...args) {
 
         return lne.slice(stripLen);
     });
-
-    if (str[0] === '') {
-        str.shift();
-    }
+    str.shift();
 
     return str.join('\n');
 }

@@ -180,6 +180,6 @@ export function wrap(proto, name, descr) {
 
     WRAPPED_FUNCS.add(descr.value);
 
-    delete descr.initializer; /* eslint prefer-reflect: 0 */
+    delete descr.initializer; // eslint-disable-line prefer-reflect
     return descr;
 }

@@ -108,7 +108,7 @@ function writeParents(parents, out, indent) {
     }
 }
 
-function writeKeyValue(key, value, out, indent) { /* eslint max-params: 0 */
+function writeKeyValue(key, value, out, indent) { // eslint-disable-line
     let keyValue = indent`${key}:\n`;
 
     if (value !== undefined) {

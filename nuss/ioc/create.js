@@ -13,17 +13,17 @@ export function factory(proto, name, descr) {
 }
 
 
-export function isCallable(cls) {
-    return SPECIALS.get(cls.prototype).func !== undefined;
-}
+// export function isCallable(cls) {
+//     return SPECIALS.get(cls.prototype).func !== undefined;
+// }
 
-export function isFactory(cls) {
-    return SPECIALS.get(cls.prototype).fac !== undefined;
-}
+// export function isFactory(cls) {
+//     return SPECIALS.get(cls.prototype).fac !== undefined;
+// }
 
-export function getBoundObject(func) {
-    return func[BOUND_INSTANCE];
-}
+// export function getBoundObject(func) {
+//     return func[BOUND_INSTANCE];
+// }
 
 export function bind(func, obj) {
     func = func.bind(obj);
@@ -51,9 +51,10 @@ export function create(cls, args=[], ctx) {
     let {func, fac} = SPECIALS.get(cls.prototype);
 
     if (fac !== undefined) {
-        obj = fac.call(obj, ctx); /* eslint prefer-reflect: 0 */
+        obj = fac.call(obj, ctx); // eslint-disable-line prefer-reflect
     } else if (func !== undefined) {
         obj = bind(func, obj);
+
         // TODO: overwrite constructor property or even Object.setPrototypeOf?
         setContext(obj, ctx);
     }

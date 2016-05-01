@@ -1,3 +1,4 @@
+
 // TODO: use WeakMap
 const CONTEXT = Symbol('context');
 const WORKER_CONTEXT = Symbol('worker-context');
@@ -32,7 +33,7 @@ export function getWorkerContext(wrk) {
 
 
 export function getDecoratedMethodContext(obj) {
-    let ctx = getContext(obj) //TODO: || {target: obj};
+    let ctx = getContext(obj);
 
     while (ctx !== undefined) {
         if (ctx.decoration.decoratedMethod !== undefined) {

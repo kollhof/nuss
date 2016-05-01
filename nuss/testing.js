@@ -1,9 +1,10 @@
-import {stub, createStubInstance} from 'sinon';
+import {createStubInstance, spy} from 'sinon';
 
 import {getImplementation, createImplementation, provide} from './ioc/resolve';
 import {getDecoratedMethods, decorators} from './ioc/decorators';
-import {createInstance, isCallable} from './ioc/create';
+import {createInstance} from './ioc/create';
 import {worker, workerContext} from './worker';
+import {process} from './process';
 import {handler} from './handler';
 import {TasksAndIO, all} from './async';
 import {concat} from './iter';
@@ -34,14 +35,29 @@ export class TestContainer {
 
         if (ecxludedDecorators.has(decorator)) {
             obj = createImplementation(decoration, target);
-        } else if (isCallable(dependencyClass)) {
-            obj = stub();
         } else {
             obj = createStubInstance(dependencyClass);
         }
 
         this.subjects.get(decorator).push(obj);
         return obj;
+    }
+
+    @provide(process)
+    getProcess() {
+        let [proc] = this.subjects.get(process);
+
+        if (proc === undefined) {
+            proc = {
+                on: spy(),
+                exit: spy(),
+                stdout: {},
+                stderr: {}
+            };
+            this.subjects.get(process).push(proc);
+        }
+
+        return proc;
     }
 
     @provide(configData)
@@ -56,19 +72,29 @@ export class TestContainer {
         return confData;
     }
 
-    createTestSubjects({exclude=[]}) {
-        let {ecxludedDecorators, cls, entrypoints, start, stop} = this;
-
-        exclude = concat(exclude, HANDLER_EXCLUDES, decorators(cls));
-
-        for (let decorator of exclude) {
-            ecxludedDecorators.add(decorator);
-        }
+    createEntrypoints() {
+        let {entrypoints, cls} = this;
 
         for (let decoration of getDecoratedMethods(cls)) {
             let ep = getImplementation(decoration, this);
             entrypoints.push(ep);
         }
+    }
+
+    createTestSubjects({exclude=[], includes=[]}) {
+        let {ecxludedDecorators, cls, start, stop} = this;
+
+        exclude = new Set(concat(exclude, HANDLER_EXCLUDES, decorators(cls)));
+
+        for (let include of includes) {
+            exclude.delete(include);
+        }
+
+        for (let decorator of exclude) {
+            ecxludedDecorators.add(decorator);
+        }
+
+        this.createEntrypoints();
 
         let subj = this.getSubjects.bind(this);
         subj.start = start.bind(this);
@@ -115,15 +141,15 @@ export function createTestSubjects(cls, options={}) {
 }
 
 
-export async function spyCalled(spy, numCalls) {
-    let {behaviors} = spy;
+export async function spyCalled(spyObj, numCalls) {
+    let {behaviors} = spyObj;
     if (behaviors !== undefined && numCalls === undefined) {
         numCalls = behaviors.length;
     }
 
     numCalls = numCalls || 1;
 
-    while (spy.callCount < numCalls) {
+    while (spyObj.callCount < numCalls) {
         await TasksAndIO;
     }
 }

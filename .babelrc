@@ -12,7 +12,7 @@
         "build/**/*.js"
     ],
     "env": {
-        "instanbul": {
+        "istanbul": {
             "plugins": [
                 "check-es2015-constants",
                 "transform-async-to-generator",

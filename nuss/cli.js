@@ -14,12 +14,18 @@ import {fileSystem} from './filesystem';
 import {factory} from './ioc/create';
 import {provide} from './ioc/resolve';
 import {dependencyDecorator} from './ioc/decorators';
+import {process} from './process';
 
 
-const EXIT_NO_ERROR = 0;
-const EXIT_ERROR = 1;
+export const EXIT_NO_ERROR = 0;
+export const EXIT_ERROR = 1;
 
-let nussArgs = new ArgumentParser({
+class NonThrowingParser extends ArgumentParser {
+    error() {
+        // nop
+    }
+}
+let nussArgs = new NonThrowingParser({
     version: '0.0.1',
     addHelp: true,
     description: 'foo container'
@@ -79,19 +85,20 @@ export class Nuss {
     @container
     container
 
-    constructor(process) {
-        this.process = process;
-    }
+    @process
+    process
+
+    require=require; // eslint-disable-line
 
     async main() {
-        let {args} = this;
+        let {args, process: {stdout}} = this;
 
         this.registerProcessEvents();
 
         let cls = this.getServiceClass();
 
         if (args.generate_config) {
-            printConfig(cls, process.stdout);
+            printConfig(cls, stdout);
             return;
         }
 
@@ -99,28 +106,23 @@ export class Nuss {
     }
 
     registerProcessEvents() {
-        let {log, process} = this;
+        let {log, process: proc} = this;
 
         log.debug`setting up process events`;
 
-        process.on('unhandledRejection',
+        proc.on('unhandledRejection',
             (err)=> this.handleUnhandledRejection(err));
-        process.on('SIGTERM', ()=> this.stop('term'));
-        process.on('SIGINT', ()=> this.stop('int'));
+        proc.on('SIGTERM', ()=> this.stop('term'));
+        proc.on('SIGINT', ()=> this.stop('int'));
     }
 
     handleUnhandledRejection(reason) {
-        let {log, process} = this;
+        let {log, process: proc} = this;
 
         log.error`unhandled async: ${reason}`;
-        if (reason.errors) {
-            for (let err of reason.errors) {
-                log.error`--- ${err}`;
-            }
-        }
 
         // TODO: should we call stop?
-        process.exit(EXIT_ERROR);
+        proc.exit(EXIT_ERROR);
     }
 
     loadConfigData() {
@@ -138,8 +140,7 @@ export class Nuss {
         let [modFile, clsName] = this.args.service.split(':');
         modFile = path.resolve(modFile);
 
-        /* global require: true */
-        let mod = require(modFile);
+        let mod = this.require(modFile);
         return mod[clsName];
     }
 
@@ -157,38 +158,34 @@ export class Nuss {
         } else {
             let cls = this.getServiceClass();
             config = flattenConfigData(cls, data);
+            this.config = config;
         }
 
-        this.config = config;
         return config;
     }
 
     async stop(signal) {
-        let {log, process} = this;
+        let {log, process: proc} = this;
 
         try {
             log.debug`cought signal ${signal}, stopping application`;
             await this.container.stop();
-            process.exit(EXIT_NO_ERROR);
+            proc.exit(EXIT_NO_ERROR);
         } catch (err) {
             try {
                 log`error stopping application: ${err}`;
             } finally {
-                process.exit(EXIT_ERROR);
+                proc.exit(EXIT_ERROR);
             }
         }
     }
 }
 
 
-export function main() {
-    /* global process: true */
-    let app = new Nuss(process);
-    app.main();
-}
-
+/* istanbul ignore if */
 /* global module: true */
 if (!module.parent) {
-    main();
+    let app = new Nuss();
+    app.main();
 }
 

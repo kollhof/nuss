@@ -1,25 +1,23 @@
+import {inspect} from 'util';
+
 import {describe, it, expect, beforeEach, spy} from './testing';
 import {createTestSubjects} from 'nuss/testing';
 import {logger, formatter, handler, COLOR_MAP} from 'nuss/logging';
+import {Script} from 'nuss/config/loader';
 import {colorize, Cyan} from 'nuss/colorize';
-import {inspect} from 'util';
+import {worker, workerContext} from 'nuss/worker';
+import {methodDecorator} from 'nuss/ioc/decorators';
+import {process} from 'nuss/process';
 
-let format = {
-    run(ctx) {
-        return `${ctx.shortColoredLevel}:${ctx.context}: ${ctx.message}`;
-    }
-};
 
-let stream = {
-    write: spy()
-};
+let format = new Script('`${shortColoredLevel}:${context}: ${message}`');
 
 let testOptions = {
     config: {
         logger: {
             level: 'info',
             handler: {
-                stream,
+                stream: 'stderr',
                 formatter: {
                     format
                 }
@@ -30,24 +28,48 @@ let testOptions = {
 };
 
 
+class Spam {
+    @worker
+    process
+}
+
+function spam(proto, name, descr) {
+    return methodDecorator(spam, {
+        dependencyClass: Spam
+    })(proto, name, descr);
+}
+
 class Service {
     @logger
     log
+
+    @workerContext
+    ctx
+
+    @spam
+    handleSpam(msg) {
+        this.log.info`${msg}`;
+        return this.ctx.id;
+    }
 }
 
 
 describe('@logger()', ()=> {
     let subjects = createTestSubjects(Service, testOptions);
     let [service] = subjects(Service);
+    let [spammer] = subjects(spam);
+    let stderr = null;
     let log = service.log;
 
     beforeEach(()=> {
-        stream.write.reset();
+        let [proc] = subjects(process);
+        stderr = proc.stderr;
+        stderr.write = spy();
     });
 
     it('should not log depending on level', ()=> {
         log.debug`shurb ${null}`;
-        expect(stream.write)
+        expect(stderr.write)
             .to.have.been
             .callCount(0);
     });
@@ -55,7 +77,7 @@ describe('@logger()', ()=> {
     it('should log objects formatted using inspect()', ()=> {
         log.info`ham ${null} ${undefined}`;
 
-        expect(stream.write)
+        expect(stderr.write)
             .to.have.been
             .calledOnce
             .calledWithExactly(
@@ -68,7 +90,7 @@ describe('@logger()', ()=> {
     it('should log context in color', ()=> {
         log.info`ham ${log}`;
 
-        expect(stream.write)
+        expect(stderr.write)
             .to.have.been
             .calledOnce
             .calledWithExactly(
@@ -80,7 +102,7 @@ describe('@logger()', ()=> {
     it('should log decorator in color', ()=> {
         log.info`ham ${logger}`;
 
-        expect(stream.write)
+        expect(stderr.write)
             .to.have.been
             .calledOnce
             .calledWithExactly(
@@ -94,12 +116,32 @@ describe('@logger()', ()=> {
 
         log.error`ham ${err}`;
 
-        expect(stream.write)
+        expect(stderr.write)
             .to.have.been
             .calledOnce
             .calledWithExactly(
                 `${COLOR_MAP.ERROR`E`}:${COLOR_MAP.name`Service`}: ham ${
                     err.stack}\n`
+            );
+    });
+
+    it('should log worker', ()=> {
+
+        let id=spammer.process('ham & eggs');
+
+        expect(stderr.write)
+            .to.have.been
+            .calledOnce
+            .calledWithExactly(
+                `${COLOR_MAP.INFO`I`}:${
+                    COLOR_MAP.name`Service.handleSpam@spam`
+                }-${
+                    COLOR_MAP.name`Spam.process@worker`
+                }${
+                    COLOR_MAP.worker`<${id}>`
+                }-${
+                    COLOR_MAP.name`Service.handleSpam@spam`
+                }: ${inspect('ham & eggs', {colors: true})}\n`
             );
     });
 });
