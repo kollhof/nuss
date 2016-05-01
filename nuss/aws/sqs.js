@@ -2,45 +2,97 @@ import {SQS} from 'aws-sdk';
 
 import {dependencyDecorator} from '../ioc/decorators';
 import {config} from '../config';
+import {logger} from '../logging';
+import {wrap, wraps} from '../async';
 
 
+// TODO: needs to be provided by container
+const QUEUE_CACHE = new Map();
+
+
+export async function getQueueUrl(queue, sqs) {
+    let task = QUEUE_CACHE.get(queue);
+
+    if (task !== undefined) {
+        let data = await task;
+
+        return data.QueueUrl;
+    }
+
+    task = sqs.getQueueUrl({QueueName: queue});
+    QUEUE_CACHE.set(queue, task);
+
+    let data = await task;
+
+    return data.QueueUrl;
+}
+
+
+@wraps('sqs')
 class AsyncSQS {
-    @config('aws')
-    config
+    SQSClass=SQS
+
+    @config('accessKeyId')
+    accessKeyId
+
+    @config('secretAccessKey')
+    secretAccessKey
+
+    @config('region')
+    region
+
+    @logger
+    log
 
     constructor() {
-        this.sqs = new SQS(this.config);
-        this.stopped = false;
+        this.receiveRequests = new Set();
     }
 
-    createQueue(...args) {
-        return this._perform('createQueue', args);
+    stop() {
+        for (let req of this.receiveRequests) {
+            req.abort();
+        }
     }
 
-    sendMessage(...args) {
-        return this._perform('sendMessage', args);
+    get sqs() {
+        let {secretAccessKey, accessKeyId, region, SQSClass, _sqs} = this;
+
+        // TODO: issue with sinon calling the getter when creating stubs
+        if (_sqs === undefined && SQSClass !== undefined) {
+            this._sqs = new SQSClass({secretAccessKey, accessKeyId, region});
+        }
+        return this._sqs;
     }
+
+    @wrap
+    createQueue
+
+    @wrap
+    sendMessage
+
+    @wrap
+    deleteMessage
+
+    @wrap
+    getQueueUrl
 
     receiveMessage(...args) {
-        return this._perform('receiveMessage', args);
-    }
-
-    deleteMessage(...args) {
-        return this._perform('deleteMessage', args);
-    }
-
-    _perform(name, args) {
-        let sqs = this.sqs;
-        let handler = sqs[name].bind(sqs);
+        let {sqs, receiveRequests} = this;
+        let {receiveMessage} = sqs;
+        receiveMessage = receiveMessage.bind(sqs);
 
         return new Promise((resolve, reject)=> {
-            handler(...args, (err, data)=> {
+            let req = receiveMessage(...args, (err, data)=> {
+                receiveRequests.delete(req);
+
                 if (err) {
                     reject(err);
                 } else {
                     resolve(data);
                 }
             });
+
+            receiveRequests.add(req);
         });
     }
 }
@@ -48,6 +100,10 @@ class AsyncSQS {
 export function asyncSQS(...args) {
     return dependencyDecorator(asyncSQS, {
         dependencyClass: AsyncSQS,
-        constructorArgs: []
+        config: [{
+            root: true,
+            key: 'aws',
+            description: 'AWS configuration'
+        }]
     })(...args);
 }

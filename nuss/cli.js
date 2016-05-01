@@ -1,122 +1,191 @@
 #!/usr/bin/env node
 'use strict';
 
-import {ArgumentParser} from 'argparse';
-import {logger} from './logging';
-import {Container} from './container';
 import path from 'path';
 
-const EXIT_NO_ERROR = 0;
-const EXIT_ERROR = 1;
+import {ArgumentParser} from 'argparse';
+
+import {logger} from './logging';
+import {printConfig} from './config/generator';
+import {flattenConfigData, loadConfig} from './config/loader';
+import {configData} from './config';
+import {container} from './container';
+import {fileSystem} from './filesystem';
+import {factory} from './ioc/create';
+import {provide} from './ioc/resolve';
+import {dependencyDecorator} from './ioc/decorators';
+import {process} from './process';
+
+
+export const EXIT_NO_ERROR = 0;
+export const EXIT_ERROR = 1;
+
+class NonThrowingParser extends ArgumentParser {
+    error() {
+        // nop
+    }
+}
+let nussArgs = new NonThrowingParser({
+    version: '0.0.1',
+    addHelp: true,
+    description: 'foo container'
+});
+
+nussArgs.addArgument(
+    ['--generate-config'], {
+        help: 'Generate a config file for a service',
+        action: 'storeTrue'
+    }
+);
+
+nussArgs.addArgument(
+    ['--config'], {
+        help: 'importable configuration module (.json file or .js module)',
+        required: false
+    }
+);
+
+nussArgs.addArgument(
+    ['--service'], {
+        help: 'importable module and class e.g. example/service:Foobar',
+        required: true
+    }
+);
+
+
+class ArgParser {
+    constructor(parser) {
+        this.parser = parser;
+    }
+
+    @factory
+    parseArgs() {
+        return this.parser.parseArgs();
+    }
+}
+
+export function cmdArgs(parser) {
+    return dependencyDecorator(cmdArgs, {
+        dependencyClass: ArgParser,
+        constructorArgs: [parser]
+    });
+}
 
 
 export class Nuss {
+    @cmdArgs(nussArgs)
+    args
+
+    @fileSystem
+    fs
+
     @logger
     log
 
-    constructor(process) {
-        this.process = process;
-    }
+    @container
+    container
 
-    async main(args) {
+    @process
+    process
+
+    require=require; // eslint-disable-line
+
+    async main() {
+        let {args, process: {stdout}} = this;
+
         this.registerProcessEvents();
 
-        if (args.require) {
-            /* global require: true */
-            require(args.require);
+        let cls = this.getServiceClass();
+
+        if (args.generate_config) {
+            printConfig(cls, stdout);
+            return;
         }
 
-        let [modFile, clsName] = args.service.split(':');
-        let mod = require(path.resolve(modFile));
-        let cls = mod[clsName];
-        let config = require(path.resolve(args.config)).default;
-
-        let runner = new Container(cls, config);
-        this.runner = runner;
-        await runner.start();
+        await this.container.start(cls);
     }
 
     registerProcessEvents() {
-        let {log, process} = this;
+        let {log, process: proc} = this;
 
         log.debug`setting up process events`;
 
-        process.on('unhandledRejection',
+        proc.on('unhandledRejection',
             (err)=> this.handleUnhandledRejection(err));
-        process.on('SIGTERM', ()=> this.stop('term'));
-        process.on('SIGINT', ()=> this.stop('int'));
+        proc.on('SIGTERM', ()=> this.stop('term'));
+        proc.on('SIGINT', ()=> this.stop('int'));
     }
 
     handleUnhandledRejection(reason) {
-        let {log, process} = this;
+        let {log, process: proc} = this;
 
-        log.error`unhandled async: ${reason.stack}`;
-        if (reason.errors) {
-            for (let err of reason.errors) {
-                log.error`${err.stack}`;
-            }
-        }
+        log.error`unhandled async: ${reason}`;
 
         // TODO: should we call stop?
-        process.exit(EXIT_ERROR);
+        proc.exit(EXIT_ERROR);
     }
 
+    loadConfigData() {
+        let configFile = this.args.config;
+        if (configFile === null) {
+            return;
+        }
+
+        configFile = path.resolve(configFile);
+        let configSrc = this.fs.readFileSync(configFile);
+        return loadConfig(configSrc);
+    }
+
+    getServiceClass() {
+        let [modFile, clsName] = this.args.service.split(':');
+        modFile = path.resolve(modFile);
+
+        let mod = this.require(modFile);
+        return mod[clsName];
+    }
+
+    @provide(configData)
+    getConfigData() {
+        let {config} = this;
+
+        if (config !== undefined) {
+            return config;
+        }
+        let data = this.loadConfigData();
+
+        if (data === undefined) {
+            config = {};
+        } else {
+            let cls = this.getServiceClass();
+            config = flattenConfigData(cls, data);
+            this.config = config;
+        }
+
+        return config;
+    }
 
     async stop(signal) {
-        let {log, runner, process} = this;
+        let {log, process: proc} = this;
 
         try {
             log.debug`cought signal ${signal}, stopping application`;
-            await runner.stop();
-            process.exit(EXIT_NO_ERROR);
+            await this.container.stop();
+            proc.exit(EXIT_NO_ERROR);
         } catch (err) {
             try {
                 log`error stopping application: ${err}`;
             } finally {
-                process.exit(EXIT_ERROR);
+                proc.exit(EXIT_ERROR);
             }
         }
     }
-
 }
 
 
-export function main() {
-    let parser = new ArgumentParser({
-        version: '0.0.1',
-        addHelp: true,
-        description: 'foo runner'
-    });
-
-    parser.addArgument(
-        ['--config'], {
-            help: 'importable configuration module (.json file or .js module)',
-            required: true
-        }
-    );
-
-    parser.addArgument(
-        ['--service'], {
-            help: 'importable module and class e.g. example/service:Foobar',
-            required: true
-        }
-    );
-
-    parser.addArgument(
-        ['--require'], {
-            help: 'Extra require e.g. babel-register'
-        }
-    );
-
-    let args = parser.parseArgs();
-
-    /* global process: true */
-    let app = new Nuss(process);
-    app.main(args);
-}
-
+/* istanbul ignore if */
 /* global module: true */
 if (!module.parent) {
-    main();
+    let app = new Nuss();
+    app.main();
 }
 

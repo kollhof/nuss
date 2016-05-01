@@ -1,4 +1,4 @@
-FROM node:5.9
+FROM node:6.0
 MAINTAINER Jan Klaas Kollhof
 
 ADD ./.babelrc /nuss-src/
@@ -9,6 +9,8 @@ ADD ./Makefile /nuss-src/
 ADD ./nuss /nuss-src/nuss
 ADD ./test /nuss-src/test
 
-RUN cd /nuss-src; npm install;
+WORKDIR /nuss-src
 
-CMD cd /nuss-src; make ci;
+RUN npm install;
+
+CMD make ci;

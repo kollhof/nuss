@@ -2,6 +2,7 @@ instrumentation:
   root: ./nuss
   es-modules: true
   include-all-sources: true
+  compact: false
 
 reporting:
   dir: ./build/cov
@@ -10,6 +11,11 @@ reporting:
     - html
   report-config:
       json: {file: coverage.json}
+  watermarks:
+    statements: [90, 100]
+    lines: [90, 100]
+    functions: [90, 100]
+    branches: [90, 100]
 
 check:
     global:

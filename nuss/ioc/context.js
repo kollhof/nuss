@@ -1,61 +1,45 @@
 
+// TODO: use WeakMap
 const CONTEXT = Symbol('context');
-
+const WORKER_CONTEXT = Symbol('worker-context');
 
 export function setContext(obj, ctx) {
     obj[CONTEXT] = ctx;
 }
 
 export function getContext(obj) {
-    return obj[CONTEXT];
+    return obj === undefined ? undefined : obj[CONTEXT];
 }
 
-
-export class Context {
-}
-
-export class InjectionContext extends Context {
-    constructor(decoration) {
-        super();
-        this.decoration = decoration;
-    }
-}
-
-export class InvokerContext extends Context {
-    constructor(decoration) {
-        super();
-        this.decoration = decoration;
-    }
-}
 
 export function* getContexts(obj) {
-    let ctx = obj;
-    if (!(ctx instanceof Context)) {
-        ctx = getContext(obj) || ctx;
-    }
+    let ctx = getContext(obj);
 
     while (ctx !== undefined) {
         yield ctx;
-        ctx = getContext(ctx);
+        ctx = getContext(ctx.target);
     }
 }
 
-export function getContextDescr(ctx) {
-    let {decoration} = ctx;
 
-    if (decoration !== undefined) {
-        let {decorator, decoratedClass, decoratedName} = decoration;
+export function setWorkerContext(wrk, wrkCtx) {
+    wrk[WORKER_CONTEXT] = wrkCtx;
+    return wrkCtx;
+}
 
-        return {
-            ctx: ctx.constructor.name,
-            cls: decoratedClass.name,
-            nme: decoratedName,
-            dec: decorator.name
-        };
+export function getWorkerContext(wrk) {
+    return wrk[WORKER_CONTEXT];
+}
+
+
+export function getDecoratedMethodContext(obj) {
+    let ctx = getContext(obj);
+
+    while (ctx !== undefined) {
+        if (ctx.decoration.decoratedMethod !== undefined) {
+            return ctx;
+        }
+
+        ctx = getContext(ctx.target);
     }
-
-    return {
-        ctx: ctx.constructor.name,
-        id: ctx.id
-    };
 }

@@ -8,11 +8,12 @@ export class SomeRejected extends Error {
 /**
  * Returns a `Promise` which will resolve after `duration` milliseconds.
  *
- * An `await sleep(...)` will essentially make the calling async function
+ * An `await sleep(...)` will make the calling async function
  * appear to pause for the given `duration`.
  *
- * Use `await defer()` rather than `await sleep(0)`,
- * if you want to yield code execution.
+ * Use `await TasksAndIO;` rather than `await sleep(0)`,
+ * if you want to yield code execution so that IO and other tasks can be
+ * processed.
  *
  * Example:
  * ```
@@ -24,19 +25,31 @@ export class SomeRejected extends Error {
  * foobar();
  * ```
  */
-export async function sleep(duration) {
-    await new Promise((resolve)=> {
+export function sleep(duration) {
+    return new Promise((resolve)=> {
         /* global setTimeout: true */
         setTimeout(resolve, duration);
     });
 }
 
+
+export const TasksAndIO = {
+    then(resolve) {
+        /* global setImmediate: true */
+        setImmediate(resolve);
+    }
+};
+
 /**
- * Returns a `Promise` for the eventual result of running the `taskFunction`.
+ * Returns a `Promise` for result of running the `taskFunction`.
+ * ```
+ *  defer(()=> task());
  *
- * An `await defer();` may be used to pause the current async function,
- * yielding code execution to any other async functions currently
- * awaiting results.
+ *  (async ()=> {
+ *      await TasksAndIO;
+ *      return task();
+ *  })();
+ * ```
  *
  * Example:
  * ```
@@ -44,7 +57,7 @@ export async function sleep(duration) {
  *     console.log(name, 'started');
  *
  *     for(let item of items){
- *         await defer();
+ *         await TasksAndIO;
  *         console.log(name, item);
  *     }
  *
@@ -55,7 +68,7 @@ export async function sleep(duration) {
  *     let task1 = defer(()=> task('t1', '123456789'));
  *     let task2 = defer(()=> task('t2', 'abcdefghi'));
  *
- *     console.log('');
+ *     console.log('spam...');
  *
  *     await all([task1, task2]);
  *
@@ -65,13 +78,15 @@ export async function sleep(duration) {
  * spam();
  * ```
  */
-export async function defer(taskFunction) {
-    // await null;
-    // if (taskFunction !== undefined) {
-    //     return await taskFunction();
-    // }
-    return await Promise.resolve().then(taskFunction);
+export function defer(taskFunction) {
+    let promise = new Promise((resolve)=> {
+        /* global setImmediate: true */
+        setImmediate(resolve);
+    });
+
+    return promise.then(taskFunction);
 }
+
 
 /**
  * Waits for all `promises` to be settled,
@@ -105,8 +120,11 @@ export class TaskSet extends Set {
         let task = defer(taskFunction);
 
         this.add(task);
+        return task;
+    }
 
-        return task.then((result)=> {
+    add(task) {
+        task.then((result)=> {
             this.delete(task);
             return result;
         })
@@ -114,5 +132,54 @@ export class TaskSet extends Set {
             this.delete(task);
             throw err;
         });
+
+        return super.add(task);
     }
+}
+
+
+export function wrapNodeStyle(thisObj, func) {
+    func = func.bind(thisObj);
+
+    return (...args)=> new Promise((resolve, reject)=> {
+        func(...args, (err, result)=> {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+}
+
+const WRAPPED_FUNCS = new WeakSet();
+const WRAPPED_OBJ_PROVIDER = new WeakMap();
+
+export function isWrapped(func) {
+    return WRAPPED_FUNCS.has(func);
+}
+
+
+export function wraps(wrapped) {
+    return (cls)=> {
+        // TODO: really use name to get the value in @wrap()?
+        WRAPPED_OBJ_PROVIDER.set(cls.prototype, wrapped);
+        return cls;
+    };
+}
+
+export function wrap(proto, name, descr) {
+
+    // TODO: does this conform to the spec?
+    descr.value = function(...args) {
+        let wrappedProvider = WRAPPED_OBJ_PROVIDER.get(proto);
+        let wrappedObj = this[wrappedProvider];
+        let func = wrapNodeStyle(wrappedObj, wrappedObj[name]);
+        return func(...args);
+    };
+
+    WRAPPED_FUNCS.add(descr.value);
+
+    delete descr.initializer; // eslint-disable-line prefer-reflect
+    return descr;
 }

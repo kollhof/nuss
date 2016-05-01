@@ -1,17 +1,51 @@
-import {provide} from './ioc/resolve';
 import {dependencyDecorator} from './ioc/decorators';
-import {callable} from './ioc/create';
-import {Context} from './ioc/context';
+import {callable, factory} from './ioc/create';
+import {getContext, getWorkerContext, setWorkerContext} from './ioc/context';
+import {handler} from './handler';
 import {shortid} from './uuid';
 
 
-export class WorkerContext extends Context {
-    id = shortid()
+export class Worker {
+    @handler
+    handle
 
-    headers = {}
+    @callable
+    invokeHandler(...args) {
+        return this.handle(...args);
+    }
+}
+
+export function worker(wokerClassOrProto, name, descr) {
+    if (name === undefined && descr === undefined) {
+        return dependencyDecorator(worker, {
+            dependencyClass: wokerClassOrProto,
+            config: [{key: 'worker', optional: true}]
+        });
+    }
+    return worker(Worker)(wokerClassOrProto, name, descr);
+}
+
+// TODO: could be a findImplFor(ctx, worker)
+function findWorker(ctx) {
+    let wrk = ctx.target;
+
+    while (ctx !== undefined && ctx.decoration !== undefined) {
+        if (ctx.decoration.decorator === worker) {
+            break;
+        }
+        wrk = ctx.target;
+        ctx = getContext(wrk);
+    }
+
+    return wrk;
+}
+
+export class WorkerContext {
+    id=shortid()
+
+    headers={}
 
     constructor() {
-        super();
         this.setHeader('trace', this.id);
     }
 
@@ -25,41 +59,22 @@ export class WorkerContext extends Context {
         return this.headers[key];
     }
 
-    @provide(workerContext)
-    getContext() {
-        return this;
+    @factory
+    getContextFromWorker(ctx) {
+        // TODO: this finds the target of a worker, not the worker
+        let wrk = findWorker(ctx);
+        let wrkCtx = getWorkerContext(wrk);
+
+        if (wrkCtx === undefined) {
+            wrkCtx = setWorkerContext(wrk, this);
+        }
+
+        return wrkCtx;
     }
 }
-
-export class AutoWorker {
-    constructor(...args) {
-        this.args = args;
-    }
-
-    @callable
-    work(handler) {
-        return handler(...this.args);
-    }
-}
-
 
 export function workerContext(proto, name, descr) {
     return dependencyDecorator(workerContext, {
         dependencyClass: WorkerContext
     })(proto, name, descr);
-}
-
-
-export function spawn(proto, name, descr) {
-    return dependencyDecorator(spawn, {})(proto, name, descr);
-}
-
-
-export function spawnWorker(wokerClassOrProto, name, descr) {
-    if (name === undefined && descr === undefined) {
-        return dependencyDecorator(spawnWorker, {
-            dependencyClass: wokerClassOrProto
-        });
-    }
-    return spawnWorker(AutoWorker)(wokerClassOrProto, name, descr);
 }
