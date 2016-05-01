@@ -73,6 +73,8 @@ export function cmdArgs(parser) {
 
 
 export class Nuss {
+    require=require; // eslint-disable-line
+
     @cmdArgs(nussArgs)
     args
 
@@ -87,8 +89,6 @@ export class Nuss {
 
     @process
     process
-
-    require=require; // eslint-disable-line
 
     async main() {
         let {args, process: {stdout}} = this;

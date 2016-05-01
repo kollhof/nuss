@@ -1,4 +1,4 @@
-import {setContext} from './context';
+import {setContext, setTmpCreateContext} from './context';
 import {DefaultWeakMap} from '../default-maps';
 
 const SPECIALS = new DefaultWeakMap(()=> ({}));
@@ -31,18 +31,21 @@ export function bind(func, obj) {
     return func;
 }
 
-export function createInstance(cls, args, ctx) {
-    let Class = class extends cls {
-        constructor() {
-            super(...args);
-        }
-    };
+export function createInstance(Class, args, ctx) {
+    setTmpCreateContext(ctx);
 
-    setContext(Class.prototype, ctx);
+    let obj = new Class(...args);
 
-    // TODO: overwrite or not?
-    Class.prototype.constructor = cls;
-    return new Class();
+    setTmpCreateContext(undefined);
+    return obj;
+
+    // let Class = class extends cls {
+    // };
+    // setContext(Class.prototype, ctx);
+
+    // // TODO: overwrite or not?
+    // Class.prototype.constructor = cls;
+    // return new Class(...args);
 }
 
 export function create(cls, args=[], ctx) {
@@ -54,8 +57,11 @@ export function create(cls, args=[], ctx) {
         obj = fac.call(obj, ctx); // eslint-disable-line prefer-reflect
     } else if (func !== undefined) {
         obj = bind(func, obj);
-
-        // TODO: overwrite constructor property or even Object.setPrototypeOf?
+        // TODO: try building a real callable
+        // let fake = (...fargs)=> Reflect.apply(func, fake, fargs);
+        // // TODO: this will loose the function prototype
+        // Reflect.setPrototypeOf(fake, obj);
+        // obj = fake;
         setContext(obj, ctx);
     }
 

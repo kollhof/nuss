@@ -11,7 +11,8 @@
         "WeakSet": true,
         "WeakMap": true,
         "Symbol": true,
-        "Promise": true
+        "Promise": true,
+        "Reflect": true
     },
 
     "extends": "eslint:recommended",
