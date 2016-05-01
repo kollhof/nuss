@@ -59,4 +59,4 @@ docker-example: build
 dev:
 	npm install
 
-ci: lint cover
+ci: lint cover-check
