@@ -57,7 +57,10 @@ export function create(cls, args=[], ctx) {
         obj = fac.call(obj, ctx); // eslint-disable-line prefer-reflect
     } else if (func !== undefined) {
         obj = bind(func, obj);
+
         // TODO: try building a real callable
+        // The following will make the function behave like the object with
+        // all it's properties, etc.
         // let fake = (...fargs)=> Reflect.apply(func, fake, fargs);
         // // TODO: this will loose the function prototype
         // Reflect.setPrototypeOf(fake, obj);
