@@ -35,6 +35,7 @@ describe('Nuss()', ()=> {
         [proc] = subjects(process);
 
         nuss.args.service = 'spam:Service';
+        nuss.args.no_babel_register = true; // eslint-disable-line camelcase
         nuss.require = stub();
         nuss.require.returns({Service});
     });
@@ -156,6 +157,15 @@ describe('Nuss()', ()=> {
 
         expect(data).to.not.deep.equal({});
         expect(data2).to.equal(data);
+    });
+
+    it('should load babel-register', async ()=> {
+        nuss.args.no_babel_register = false; // eslint-disable-line camelcase
+        await nuss.main();
+
+        expect(nuss.require)
+            .to.have.been
+            .calledWithExactly('babel-register');
     });
 
 });

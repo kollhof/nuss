@@ -56,7 +56,7 @@ nussArgs.addArgument(
 nussArgs.addArgument(
     ['--no-babel-register'], {
         help: 'disable the use of babel-register to auto compile services',
-        default: true,
+        defaultValue: false,
         action: 'storeFalse'
     }
 );
