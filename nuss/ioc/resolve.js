@@ -31,7 +31,7 @@ export function findProvider(decorator, target) {
 
     while (ctx !== undefined) {
         let provider = ctx.target;
-        let proto = provider.constructor.prototype;
+        let proto = Reflect.getPrototypeOf(provider);
 
         let func = IMPLEMENTATION_PROVIDERS
             .get(proto)

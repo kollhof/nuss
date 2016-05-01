@@ -53,6 +53,15 @@ nussArgs.addArgument(
 );
 
 
+nussArgs.addArgument(
+    ['--no-babel-register'], {
+        help: 'disable the use of babel-register to auto compile services',
+        default: true,
+        action: 'storeFalse'
+    }
+);
+
+
 class ArgParser {
     constructor(parser) {
         this.parser = parser;
@@ -73,6 +82,8 @@ export function cmdArgs(parser) {
 
 
 export class Nuss {
+    require=require; // eslint-disable-line
+
     @cmdArgs(nussArgs)
     args
 
@@ -87,8 +98,6 @@ export class Nuss {
 
     @process
     process
-
-    require=require; // eslint-disable-line
 
     async main() {
         let {args, process: {stdout}} = this;
@@ -137,7 +146,13 @@ export class Nuss {
     }
 
     getServiceClass() {
-        let [modFile, clsName] = this.args.service.split(':');
+        let {args} = this;
+
+        if (!args.no_babel_register) {
+            this.require('babel-register');
+        }
+
+        let [modFile, clsName] = args.service.split(':');
         modFile = path.resolve(modFile);
 
         let mod = this.require(modFile);

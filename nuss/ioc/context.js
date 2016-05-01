@@ -3,12 +3,26 @@
 const CONTEXT = Symbol('context');
 const WORKER_CONTEXT = Symbol('worker-context');
 
+let tmpCreateContext = undefined; // eslint-disable-line no-undef-init
+
+export function setTmpCreateContext(ctx) {
+    tmpCreateContext = ctx;
+}
+
 export function setContext(obj, ctx) {
     obj[CONTEXT] = ctx;
 }
 
 export function getContext(obj) {
-    return obj === undefined ? undefined : obj[CONTEXT];
+    if (obj !== undefined) {
+        let ctx = obj[CONTEXT];
+        if (ctx === undefined && tmpCreateContext !== undefined) {
+            ctx = tmpCreateContext;
+            tmpCreateContext = undefined;
+            setContext(obj, ctx);
+        }
+        return ctx;
+    }
 }
 
 
