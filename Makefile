@@ -15,11 +15,6 @@ build:
 lint:
 	$(NODE_BIN)/eslint nuss examples tests
 
-
-test-compiled:
-	NODE_PATH=build $(NODE_BIN)/mocha --compilers js:babel-register
-
-
 test:
 	NODE_PATH=. $(NODE_BIN)/mocha --compilers js:babel-register
 
@@ -60,3 +55,4 @@ dev:
 	npm install
 
 ci: lint cover-check
+
