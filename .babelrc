@@ -8,9 +8,6 @@
         "transform-es2015-modules-commonjs",
     ],
     "sourceMaps": "both",
-    "ignore": [
-        "build/**/*.js"
-    ],
     "env": {
         "istanbul": {
             "plugins": [
