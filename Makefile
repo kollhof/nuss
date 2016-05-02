@@ -60,3 +60,4 @@ dev:
 	npm install
 
 ci: lint cover-check
+	env
