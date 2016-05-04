@@ -3,79 +3,59 @@ import {http} from 'nuss/http';
 import {consumer, publisher} from 'nuss/aws';
 import {logger} from 'nuss/logging';
 import {workerContext} from 'nuss/worker';
-import {config} from 'nuss/config';
 
-const START_COUNTER = 0;
-const TIMER_SLEEP_TIME = 1000;
+const TIMER_INTERVAL = 1000;
 
 
-let globalCounter = START_COUNTER;
-
-function inc() {
-    globalCounter += 1;
-    return globalCounter;
-}
-
-
-export class Foobar {
+export class ExampleService {
     @logger
     log
 
     @workerContext
     workerCtx
 
-    @config('Important spam config')
-    spam='ham'
-
-    @publisher('foobar')
-    shrub
+    @publisher('example-queue')
+    publish
 
 
-    @consumer('foobar')
-    async ni(msg) {
+    @consumer('example-queue')
+    async handleMessage(msg) {
         let {log} = this;
-        let cntr = inc();
 
-        log.debug`-----${cntr}-----`;
-        log.debug`message ${msg}`;
-        log.debug`ctx headers ${this.workerCtx.headers}`;
-        log.debug`------------------`;
+        log.debug`recived message: ${msg}`;
+        log.debug`ctx headers: ${this.workerCtx.headers}`;
     }
 
-    @timer(TIMER_SLEEP_TIME)
-    async handle1() {
+    @timer(TIMER_INTERVAL)
+    async handleTick() {
         let {log} = this;
-        let cntr = inc();
 
-        log.debug`-----${cntr}-----`;
-        log.debug`config: ${this.spam}`;
-        await this.shrub({ni: cntr});
+        await this.publish({date: new Date()});
+
         log.debug`ctx headers ${this.workerCtx.headers}`;
-        log.debug`-----------------`;
     }
 
     @http('/hello/world')
-    async handleHttp(req, resp) {
+    async handleHelloWorld(req, resp) {
         let {log} = this;
-        let cntr = inc();
 
-        log.debug`-----${cntr}-----`;
-        this.log.debug`http: ${req.headers}`;
-        log.debug`ctx headers ${this.workerCtx.headers}`;
-        resp.end(`Hello World: ${cntr}\n`);
-        log.debug`-----------------`;
+        log.debug`http headers: ${req.headers}`;
+        log.debug`ctx headers: ${this.workerCtx.headers}`;
+
+        resp.end('Hello World');
     }
 
-    @http('/hello/world2')
-    async handleHttp2(req, resp) {
+    @http('/publish/message')
+    async handle(req, resp) {
         let {log} = this;
-        let cntr = inc();
 
-        log.debug`-----${cntr}-----`;
-        this.log.debug`http: ${req.headers}`;
-        log.debug`ctx headers ${this.workerCtx.headers}`;
-        await this.shrub({ni: cntr});
-        resp.end(`Hello World 2: ${cntr}`);
-        log.debug`-----------------`;
+        log.debug`http headers: ${req.headers}`;
+        log.debug`ctx headers: ${this.workerCtx.headers}`;
+
+        let msg = {date: new Date()};
+
+        await this.publish(msg);
+
+        resp.end(`published msg: ${JSON.stringify(msg)}`);
     }
 }

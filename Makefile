@@ -33,18 +33,18 @@ example:
 	NODE_PATH=. node -r babel-register \
 		nuss/cli.js \
 			--config ./config/config.yaml \
-			--service examples/service:Foobar
+			--service examples/service:ExampleService
 
 example-dbg:
 	NODE_PATH=. node --debug-brk -r babel-register \
 		nuss/cli.js --config ./config/config.yaml \
-		--service examples/service:Foobar
+			--service examples/service:ExampleService
 
 example-config:
 	NODE_PATH=. node -r babel-register \
 		nuss/cli.js \
 			--generate-config \
-			--service examples/service:Foobar
+			--service examples/service:ExampleService
 
 dev:
 	npm install

@@ -41,7 +41,7 @@ class Service {
     log
 
     @config()
-    shrub='ni'
+    shrub
 
     @spam
     async sleep(foobar) {
@@ -50,7 +50,7 @@ class Service {
 }
 
 
-let formatScript = new Script('`${shortColoredLevel}:${context}: ${message}`');
+let formatScript = new Script('`${lvl}:${context}: ${message}`');
 
 
 describe('@config', ()=> {
@@ -80,7 +80,7 @@ describe('printConfig()', ()=> {
 
         expect(out.data).to.be.equal(ltrim`
 
-            # Logger configuration
+            # Logging configuration
             # nestable under eggs:worker:
             logger:
 
@@ -98,9 +98,9 @@ describe('printConfig()', ()=> {
 
                         # message format
                         format: !es ${
-                            "'`${shortColoredLevel}:${context}: ${message}`'"}
+                            "'`${lvl}:${context}: ${message}`'"}
 
-            shrub: ni
+            shrub:
 
             # config for @spam()
             spam:
@@ -123,7 +123,7 @@ describe('config loader', ()=> {
                 stream: stderr
                 formatter:
                     format: !es ${
-                        "'`${shortColoredLevel}:${context}: ${message}`'"}
+                        "'`${lvl}:${context}: ${message}`'"}
         shrub: ni
         spam:
             eggs:

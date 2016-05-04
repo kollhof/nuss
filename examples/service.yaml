@@ -1,0 +1,56 @@
+# Logging configuration
+# nestable under worker:
+logger:
+
+    # Log level (error, info, debug)
+    level: debug
+
+    # Custom Handler
+    handler:
+
+        # output stream
+        stream: stderr
+
+        # Custom Formatter
+        formatter:
+
+            # message format
+            format: !es '`${lvl}:${context}: ${message}`'
+
+# SQS configuration
+# nestable under publisher:, consumer:
+queues:
+
+    # Queue for @publisher('example-queue')
+    # Queue for @consumer('example-queue')
+    example-queue:
+
+        # The name of the queue.
+        name: example-sqs-queue
+
+        # may contain: aws:,logger:
+
+# AWS configuration
+aws:
+
+    # accessKeyId
+    accessKeyId: '***********'
+
+    # secretAccessKey
+    secretAccessKey: '**************'
+
+    # region
+    region: us-west-1
+
+    # may contain: logger:
+
+# HTTP-server configuration for @http()
+http:
+
+    # The base URL for all routes.
+    rootUrl: /
+
+    # The port to listen on.
+    port: 8080
+
+    # may contain: logger:

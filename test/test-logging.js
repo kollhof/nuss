@@ -10,7 +10,7 @@ import {methodDecorator} from 'nuss/ioc/decorators';
 import {process} from 'nuss/process';
 
 
-let format = new Script('`${shortColoredLevel}:${context}: ${message}`');
+let format = new Script('`${lvl}:${context}: ${message}`');
 
 let testOptions = {
     config: {

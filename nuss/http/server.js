@@ -34,7 +34,7 @@ export class HttpServer {
     }
 
     addRoute(verb, route, requestHandler) {
-        this.log.debug`registering request handler for route '${route}'`;
+        this.log.debug`registering request handler for route ${route}`;
         this.router[verb](route, requestHandler);
     }
 
@@ -68,7 +68,7 @@ export class HttpServer {
 
         await server.listen(this.port, base.handle.bind(base));
 
-        log.debug`server listening at 'localhost:${port}${rootUrl}'`;
+        log.debug`server listening at ${`localhost:${port}${rootUrl}`}`;
     }
 
     async stopServer() {
@@ -103,7 +103,7 @@ export function httpServer(proto, name, descr) {
         config: [{
             root: true,
             key: 'http',
-            description: 'HTTP-server config for @http()'
+            description: 'HTTP-server configuration for @http()'
         }]
     })(proto, name, descr);
 }

@@ -33,13 +33,13 @@ class AsyncSQS {
     SQSClass=SQS
 
     @config('accessKeyId')
-    accessKeyId
+    accessKeyId='***********'
 
     @config('secretAccessKey')
-    secretAccessKey
+    secretAccessKey='**************'
 
     @config('region')
-    region
+    region='us-west-1'
 
     @logger
     log
