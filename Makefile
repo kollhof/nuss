@@ -6,18 +6,20 @@ NODE_BIN := ./node_modules/.bin
 clean:
 	rm -rf build
 
-
-build:
+build: clean
 	$(NODE_BIN)/babel nuss --out-dir build/nuss --source-maps
+	$(NODE_BIN)/babel examples --out-dir build/examples --source-maps
 	cp ./package.json build/nuss/
+	cp ./README.md build/nuss/
 
+publish: build
+	npm publish build/nuss
 
 lint:
 	$(NODE_BIN)/eslint nuss examples tests
 
 test:
 	NODE_PATH=. $(NODE_BIN)/mocha --compilers js:babel-register
-
 
 cover:
 	NODE_PATH=. BABEL_ENV=istanbul node -r babel-register \
@@ -43,13 +45,6 @@ example-config:
 		nuss/cli.js \
 			--generate-config \
 			--service examples/service:Foobar
-
-docker-example: build
-	$(NODE_BIN)/babel examples --out-dir build/examples --source-maps
-	$(NODE_BIN)/babel config --out-dir build/examples --source-maps
-	cp examples/Dockerfile build/examples/
-	cp -r build/nuss build/examples/
-	docker build -t nuss-example build/examples
 
 dev:
 	npm install

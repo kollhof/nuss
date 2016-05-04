@@ -1,9 +1,10 @@
 {
   "name": "nuss",
   "version": "0.0.1",
-  "description": "Experiment building micro-services using various ES7 features",
+  "license" : "MIT",
+  "description": "node microservices stack",
   "repository": "https://github.com/kollhof/nuss",
-  "private": true,
+  "private": false,
   "engines": {
     "node": ">=6.0.0"
   },
