@@ -19,7 +19,7 @@ class Publisher {
     workerCtx
 
     @config('name', 'The name of the queue.')
-    queue
+    queue='example-sqs-queue'
 
     @callable
     async publish(msg) {

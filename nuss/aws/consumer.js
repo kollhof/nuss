@@ -70,7 +70,7 @@ class Consumer {
     log
 
     @config('name', 'The name of the queue.')
-    queue
+    queue='example-sqs-queue'
 
     constructor() {
         this.queueUrl = null;

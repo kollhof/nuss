@@ -130,7 +130,7 @@ function formatItem(obj) { // eslint-disable-line complexity
 
 export class Formatter {
     @config('format', 'message format')
-    formatScript=new Script('`${shortColoredLevel}:${context}: ${message}`')
+    formatScript=new Script('`${lvl}:${context}: ${message}`')
 
     // @config('colorize messages')
     // colorize=true
@@ -149,7 +149,7 @@ export class Formatter {
                 return getNamePath(target);
             },
 
-            get shortColoredLevel() {
+            get lvl() {
                 let levelName = LEVEL_NAMES[level];
                 let clr = COLOR_MAP[levelName];
                 return clr`${levelName[0]}`;
@@ -263,7 +263,7 @@ export function logger(proto, name, descr) {
         config: [{
             root: true,
             key: 'logger',
-            description: 'Logger configuration'
+            description: 'Logging configuration'
         }]
     })(proto, name, descr);
 }
