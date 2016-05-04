@@ -30,7 +30,7 @@ coveralls:
 	NODE_PATH=. BABEL_ENV=istanbul node -r babel-register \
 		$(NODE_BIN)/babel-istanbul cover \
 		$(NODE_BIN)/_mocha --report lcovonly -- -R spec && \
-		cat .build/cov/lcov.info | $(NODE_BIN)/coveralls --verbose
+		cat ./build/cov/lcov.info | $(NODE_BIN)/coveralls --verbose
 
 cover-check: cover
 	$(NODE_BIN)/babel-istanbul check-coverage
