@@ -7,7 +7,7 @@ import {config} from '../config';
 import {nodeServer} from './node-server';
 
 import {Router} from 'express';
-
+import finalhandler from 'finalhandler';
 
 export const DEFAULT_PORT = 8080;
 
@@ -63,10 +63,14 @@ export class HttpServer {
 
         log.debug`starting server`;
 
-        let base = new Router();
+        let base = new Router({strict: true});
+
         base.use(rootUrl, this.router);
 
-        await server.listen(this.port, base.handle.bind(base));
+        await server.listen(this.port, (req, resp)=> {
+            let done = finalhandler(req, resp);
+            base.handle(req, resp, done);
+        });
 
         log.debug`server listening at ${`localhost:${port}${rootUrl}`}`;
     }

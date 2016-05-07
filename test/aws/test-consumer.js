@@ -107,7 +107,7 @@ describe('@consumer()', ()=> {
             .calledOnce
             .calledWithExactly('ham & eggs');
 
-        //TODO: should call something like sqs.handleUnhandledMessage()
+        // TODO: should call something like sqs.handleUnhandledMessage()
         expect(sqs.deleteMessage)
             .to.have.been
             .callCount(0);

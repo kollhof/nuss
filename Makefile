@@ -16,7 +16,7 @@ publish: build
 	npm publish build/nuss
 
 lint:
-	$(NODE_BIN)/eslint nuss examples tests
+	$(NODE_BIN)/eslint nuss examples test
 
 test:
 	NODE_PATH=. $(NODE_BIN)/mocha --compilers js:babel-register

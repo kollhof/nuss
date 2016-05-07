@@ -3,7 +3,7 @@ import {createRequest, createResponse} from 'node-mocks-http';
 import {describe, it, expect, spy, stub, match} from '../testing';
 import {createTestSubjects, spyCalled} from 'nuss/testing';
 
-import {http, INTERNAL_SERVER_ERROR} from 'nuss/http';
+import {http, INTERNAL_SERVER_ERROR, HTTP_404} from 'nuss/http';
 import {httpServer} from 'nuss/http/server';
 import {nodeServer} from 'nuss/http/node-server';
 
@@ -96,8 +96,9 @@ describe('@http()', ()=> {
 
         await subjects.start();
         nodeSrv.listen.callArgWith(REQUEST_HANDLER, req, resp);
-        //TODO: should call spamRoute.stop() to have it wait for req processing
-        //to complete
+
+        // TODO: should call spamRoute.stop() to have it wait for req
+        // processing to complete
         await spyCalled(resp.send);
 
         expect(resp.status)
@@ -110,4 +111,24 @@ describe('@http()', ()=> {
             .calledOnce
             .calledWithExactly(err.stack);
     });
+
+    it('should handle invalid routes', async ()=> {
+        let req = createRequest({
+            method: 'GET',
+            url: '/non-registered-route',
+            resume: spy()
+        });
+
+        let resp = createResponse();
+
+        // calling original end() would reset the status.
+        resp.end = spy();
+
+        await subjects.start();
+        nodeSrv.listen.callArgWith(REQUEST_HANDLER, req, resp);
+        await spyCalled(resp.end);
+
+        expect(resp.statusCode).to.equal(HTTP_404);
+    });
+
 });

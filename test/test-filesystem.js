@@ -46,7 +46,7 @@ describe('@fileSystem()', ()=> {
         expect(descr).to.deep.equal({
             decorator: fileSystem,
             decoratorDescr: {
-                dependencyClass: FileSystem,
+                dependencyClass: FileSystem
             },
             decoratedClass: Foobar,
             decoratedName: 'fs'

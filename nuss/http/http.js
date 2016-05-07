@@ -9,7 +9,7 @@ import {httpServer} from './server';
 
 export const GET = 'get';
 export const INTERNAL_SERVER_ERROR = 500;
-
+export const HTTP_404 = 404;
 
 export class RequestHanlder {
     @logger

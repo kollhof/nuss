@@ -1,7 +1,7 @@
 import path from 'path';
 
 import {
-    describe, it, beforeEach, expect, spy, stub, match, Writer
+    describe, it, beforeEach, expect, stub, match, Writer
 } from './testing';
 import {createTestSubjects} from 'nuss/testing';
 import {printConfig} from 'nuss/config/generator';
@@ -17,7 +17,7 @@ class Service {
     logger
 }
 
-describe('Nuss()', ()=> {
+describe('Nuss()', ()=> { // eslint-disable-line max-statements
     let nuss = null;
     let cont = null;
     let fs = null;
@@ -167,7 +167,4 @@ describe('Nuss()', ()=> {
             .to.have.been
             .calledWithExactly('babel-register');
     });
-
 });
-
-
