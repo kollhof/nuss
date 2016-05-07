@@ -62,22 +62,22 @@ describe('@http()', ()=> {
             .calledWithExactly();
     });
 
-    // it('should process requests calling service handler', async ()=> {
-    //     let req = createRequest({
-    //         method: 'GET',
-    //         url: '/test/root/spam'
-    //     });
+    it('should process requests calling service handler', async ()=> {
+        let req = createRequest({
+            method: 'GET',
+            url: '/test/root/spam'
+        });
 
-    //     let resp = createResponse();
+        let resp = createResponse();
 
-    //     await subjects.start();
-    //     nodeSrv.listen.callArgWith(REQUEST_HANDLER, req, resp);
+        await subjects.start();
+        nodeSrv.listen.callArgWith(REQUEST_HANDLER, req, resp);
 
-    //     expect(handleSpam)
-    //         .to.have.been
-    //         .calledOnce
-    //         .calledWithExactly(req, resp);
-    // });
+        expect(handleSpam)
+            .to.have.been
+            .calledOnce
+            .calledWithExactly(req, resp);
+    });
 
     it('should send INTERNAL_SERVER_ERROR if handler throws', async ()=> {
         let err = new Error('handling request');
