@@ -1,3 +1,3 @@
-import {http, INTERNAL_SERVER_ERROR, GET} from './http';
+import {http, INTERNAL_SERVER_ERROR, HTTP_404, GET} from './http';
 
-export {http, INTERNAL_SERVER_ERROR, GET};
+export {http, INTERNAL_SERVER_ERROR, HTTP_404, GET};

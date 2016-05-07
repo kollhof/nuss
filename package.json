@@ -1,6 +1,6 @@
 {
   "name": "nuss",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "description": "node microservices stack",
   "repository": "https://github.com/kollhof/nuss",
@@ -12,6 +12,7 @@
     "argparse": "^1.0.7",
     "aws-sdk": "^2.3.7",
     "express": "^4.13.4",
+    "finalhandler": "^0.4.1",
     "js-yaml": "^3.5.5",
     "node-uuid": "^1.4.7"
   },

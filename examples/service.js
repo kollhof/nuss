@@ -26,14 +26,14 @@ export class ExampleService {
         log.debug`ctx headers: ${this.workerCtx.headers}`;
     }
 
-    @timer(TIMER_INTERVAL)
-    async handleTick() {
-        let {log} = this;
+    // @timer(TIMER_INTERVAL)
+    // async handleTick() {
+    //     let {log} = this;
 
-        await this.publish({date: new Date()});
+    //     await this.publish({date: new Date()});
 
-        log.debug`ctx headers ${this.workerCtx.headers}`;
-    }
+    //     log.debug`ctx headers ${this.workerCtx.headers}`;
+    // }
 
     @http('/hello/world')
     async handleHelloWorld(req, resp) {
